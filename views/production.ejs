@@ -1,0 +1,65 @@
+<%- include('partials/header', { title: 'Производственная спецификация ' + q.number }) %>
+
+<div class="quote-header">
+  <h1>🏭 Производственная спецификация <%= q.number %></h1>
+  <p>КП утверждено: <%= q.approved_at || '—' %> · Полная спецификация для производственного отдела</p>
+</div>
+
+<div class="grid-2">
+  <fieldset class="card">
+    <legend>Режим работы</legend>
+    <table class="kv">
+      <tr><td>Хладагент</td><td><%= result.input.refrigerant %></td></tr>
+      <tr><td>t кип / t конд</td><td><%= result.input.tEvap %> / <%= result.input.tCond %> °C</td></tr>
+      <tr><td>Холодопроизводительность</td><td><%= result.selection.totals.q_kw %> кВт</td></tr>
+      <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
+    </table>
+  </fieldset>
+  <fieldset class="card">
+    <legend>Трубопроводы</legend>
+    <table class="kv">
+      <tr><td>Всасывание</td><td><%= result.piping.common.suction.recommended.size_in %>" (Ø<%= result.piping.common.suction.recommended.od_mm %>×<%= result.piping.common.suction.recommended.wall_mm %>)</td></tr>
+      <tr><td>Нагнетание</td><td><%= result.piping.common.discharge.recommended.size_in %>" (Ø<%= result.piping.common.discharge.recommended.od_mm %>×<%= result.piping.common.discharge.recommended.wall_mm %>)</td></tr>
+      <tr><td>Жидкость</td><td><%= result.piping.common.liquid.recommended.size_in %>" (Ø<%= result.piping.common.liquid.recommended.od_mm %>×<%= result.piping.common.liquid.recommended.wall_mm %>)</td></tr>
+    </table>
+  </fieldset>
+</div>
+
+<fieldset class="card">
+  <legend>Полная спецификация (BOM)</legend>
+  <table class="table">
+    <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена, EUR</th><th>Сумма, EUR</th><th>Раздел</th></tr>
+    <% result.bom.forEach((it, i) => { %>
+      <tr>
+        <td><%= i+1 %></td>
+        <td><b><%= it.article %></b></td>
+        <td><%= it.name %></td>
+        <td><%= it.qty %></td>
+        <td><%= it.unit_price_eur %></td>
+        <td><%= it.total_price_eur %></td>
+        <td><%= it.section %></td>
+      </tr>
+    <% }) %>
+  </table>
+</fieldset>
+
+<fieldset class="card">
+  <legend>Калькуляция</legend>
+  <table class="kv" style="max-width:480px">
+    <% const t = result.totals; %>
+    <tr><td>Материалы</td><td><%= t.materials_eur %> EUR</td></tr>
+    <tr><td>Мелочь (<%= t.petty_pct %>%)</td><td><%= t.petty_eur %> EUR</td></tr>
+    <tr><td>Работы (<%= t.labor_pct %>%)</td><td><%= t.labor_eur %> EUR</td></tr>
+    <tr><td>Профит (<%= t.profit_pct %>%)</td><td><%= t.profit_eur %> EUR</td></tr>
+    <tr class="total-row"><td>Итого без НДС</td><td><%= t.subtotal_eur %> EUR</td></tr>
+    <tr><td>Скидка <%= t.discount_percent %>%</td><td>−<%= t.discount_amount_eur %> EUR</td></tr>
+    <tr class="grand-row"><td>ВСЕГО</td><td><%= t.total_eur %> EUR</td></tr>
+  </table>
+</fieldset>
+
+<div class="actions no-print">
+  <a href="/quotes/<%= encodeURIComponent(q.number) %>/production.csv" class="btn btn-success">⬇ Экспорт CSV</a>
+  <a href="/quotes/<%= encodeURIComponent(q.number) %>" class="btn btn-primary">К КП</a>
+</div>
+
+<%- include('partials/footer') %>

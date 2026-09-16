@@ -1,0 +1,25 @@
+<%- include('partials/header', { title: 'Каталог' }) %>
+
+<h1>Каталог</h1>
+<p class="hint">Активных компрессоров: <b><%= compressorsCount %></b></p>
+
+<% Object.entries(byCat).forEach(([cat, items]) => { %>
+  <fieldset class="card">
+    <legend><%= cat %> (<%= items.length %>)</legend>
+    <table class="table">
+      <tr><th>Артикул</th><th>Наименование</th><th>Ø, "</th><th>Q, кВт</th><th>Q2, кВт</th><th>Объем, л</th><th>Цена, EUR</th></tr>
+      <% items.forEach(c => { %>
+        <tr>
+          <td><b><%= c.code %></b></td><td><%= c.name %></td>
+          <td><%= c.size_in != null ? c.size_in : '—' %></td>
+          <td><%= c.capacity_kw != null ? c.capacity_kw : '—' %></td>
+          <td><%= c.capacity_kw2 != null ? c.capacity_kw2 : '—' %></td>
+          <td><%= c.volume_l != null ? c.volume_l : '—' %></td>
+          <td><%= c.price_eur %></td>
+        </tr>
+      <% }) %>
+    </table>
+  </fieldset>
+<% }) %>
+
+<%- include('partials/footer') %>

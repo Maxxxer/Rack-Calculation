@@ -1,0 +1,415 @@
+/**
+ * Наполнение БД данными из «База данных.xlsx» и «Калькулятор Ultima_Prime_DB.xlsx»:
+ *  - хладагенты: R404a, R507a, R410a, R32, R449b
+ *  - производители: Xecom, Invotech, Bitzer_EU, Bitzer_CH, Copeland, Refcomp,
+ *    Ridan_Scroll, Ridan_Piston
+ *  - компрессоры с полиномами AHRI (реальные коэффициенты из Refcomp_polynom /
+ *    Xecom_polynom — выборка основных моделей)
+ *  - каталог компонентов, диаметры труб, опции, администратор
+ *
+ * Запуск: npm run seed
+ */
+'use strict';
+
+const bcrypt = require('bcryptjs');
+const { db } = require('./database');
+const refr = require('../services/refrigerants');
+
+// ================= ХЛАДАГЕНТЫ =================
+function seedRefrigerants() {
+  const ins = db.prepare('INSERT OR IGNORE INTO refrigerants (code, name, safety_class, glide_k, gwp) VALUES (?,?,?,?,?)');
+  for (const r of refr.listSupported()) ins.run(r.code, r.name, r.safety, r.glide, r.gwp);
+}
+
+// ================= ПРОИЗВОДИТЕЛИ =================
+const MANUFACTURERS = [
+  ['Xecom', 'Китай'], ['Invotech', 'Китай'], ['Bitzer_EU', 'Германия'],
+  ['Bitzer_CH', 'Германия'], ['Copeland', 'США'], ['Refcomp', 'Италия'],
+  ['Ridan_Scroll', 'Россия'], ['Ridan_Piston', 'Россия']
+];
+
+// ================= КОМПРЕССОРЫ =================
+// Полиномы AHRI: [C1..C10].
+// Refcomp: capacity/power в кВт (multiplier=1), массовый расход полиномом не задан.
+// Xecom: capacity/power в Вт, mass в кг/ч (multiplier=1000).
+// [производитель, модель, тип, хладагент, Vh, dSuction_in, dDisch_in, Imax,
+//  minTevap, maxTevap, minTcond, maxTcond, цена EUR, polyCapacity, polyPower, polyMass]
+const COMPRESSORS = [
+  // --- Refcomp SP4H (высокотемпературные, R404a) ---
+  ['Refcomp', 'SP4HN100E', 'scroll', 'R404a', 35, 0.875, 1.125, 24, -45, 6, 20, 55, 1150,
+    [46.0512587916468, 1.63707132046735, -0.287326668035832, 0.0213358019787889, -0.00968135142718579, -0.00361236881726139, 0.0000798504352577475, -0.000152215925484366, -0.0000759012516972167, 0.000013427534183277],
+    [4.11094528962297, -0.0636885629451344, 0.111428720013105, -0.00244796915666153, 0.00450335343429447, 0.000490828256392128, -0.000023274624839968, 0.00000221013075547833, -0.0000253123600346545, -0.0000109737146749772],
+    null],
+  ['Refcomp', 'SP4H220E', 'scroll', 'R404a', 64.7, 1.125, 1.625, 37, -45, 6, 20, 55, 1890,
+    [82.5618793347486, 2.8871900841865, -0.451776706785649, 0.0383978312114675, -0.0140833587571776, -0.00738033915431577, 0.000175396112351793, -0.00021589989250256, -0.000137282961591399, 0.0000319334062288797],
+    [7.48058893530767, -0.121205811065638, 0.204759227958828, -0.00518368613458262, 0.00694279300930643, 0.000452157687301401, -0.0000443240395940334, 0.0000167771249885216, -0.000014768886254171, -0.00000823926296485076],
+    null],
+  ['Refcomp', 'SP4H350E', 'scroll', 'R404a', 102.9, 1.375, 2.125, 56, -45, 6, 20, 55, 2650,
+    [130.892317417536, 4.52299047059055, -0.694294487519597, 0.0591406698160201, -0.0208486082284471, -0.0119175626351651, 0.000261945206057349, -0.00033088151664786, -0.00023148063649615, 0.0000487038103155262],
+    [11.7923766681996, -0.206872101277491, 0.330513413138616, -0.00854881147322872, 0.0113082344282972, 0.000746609574183216, -0.0000735025187405765, 0.0000251344258652277, -0.0000276739030161158, -0.0000144800968826697],
+    null],
+  ['Refcomp', 'SP6H400E', 'scroll', 'R404a', 129.1, 1.375, 2.125, 75, -45, 6, 20, 55, 3100,
+    [165.11840573638, 5.77449228040878, -0.903064289900744, 0.0767994869342518, -0.0281687870742843, -0.0147740397114432, 0.000350835640112768, -0.000431927124702056, -0.000274560814538481, 0.0000639803971683223],
+    [14.9639918321674, -0.242105548241377, 0.409253928334287, -0.0103589248331744, 0.0138737417501414, 0.00091107248914439, -0.0000885339345626329, 0.0000335027814992272, -0.0000294907122852379, -0.0000165292994296043],
+    null],
+  // --- Refcomp SP4L (низкотемпературные, R404a) ---
+  ['Refcomp', 'SP4LN060E', 'scroll', 'R404a', 35, 0.875, 1.125, 16, -45, -6, 20, 50, 1180,
+    [44.68733838, 1.323472141, -0.378252751, 0.010447437, -0.007565172, -0.000381256, -2.29e-7, -0.0000158, -0.00000256, -7.8e-8],
+    [5.086167454, 0.023544166, 0.087177148, -0.000495699, 0.002209914, 0.000261492, 4.16e-8, 0.00000327, 0.00000901, 7.24e-9],
+    null],
+  ['Refcomp', 'SP4L150E', 'scroll', 'R404a', 64.7, 1.125, 1.625, 29, -45, -6, 20, 50, 1950,
+    [82.60775894, 2.446533437, -0.699227414, 0.019312838, -0.013984765, -0.000704778, -4.23e-7, -0.0000291, -0.00000473, -1.44e-7],
+    [9.402146339, 0.043523084, 0.161153227, -0.000916336, 0.004085186, 0.000483387, 7.68e-8, 0.00000605, 0.0000167, 1.34e-8],
+    null],
+  ['Refcomp', 'SP4L250E', 'scroll', 'R404a', 102.9, 1.375, 2.125, 43, -45, -6, 20, 50, 2750,
+    [132.1724143, 3.914453499, -1.118763863, 0.030900541, -0.022375624, -0.001127645, -6.77e-7, -0.0000466, -0.00000757, -2.31e-7],
+    [15.04343414, 0.069636934, 0.257845163, -0.001466138, 0.006536298, 0.000773419, 1.23e-7, 0.00000968, 0.0000266, 2.14e-8],
+    null],
+  ['Refcomp', 'SP6L400E', 'scroll', 'R404a', 154.4, 1.625, 2.125, 75, -45, -6, 20, 50, 3250,
+    [198.2586215, 5.871680248, -1.678145795, 0.046350811, -0.033563436, -0.001691468, -0.00000102, -0.00007, -0.0000114, -3.46e-7],
+    [22.56515121, 0.104455402, 0.386767745, -0.002199206, 0.009804446, 0.001160129, 1.84e-7, 0.0000145, 0.00004, 3.21e-8],
+    null],
+  // --- Refcomp SPC4 (поршневые, R404a) ---
+  ['Refcomp', 'SPC4-19H', 'recip', 'R404a', 19.3, 1.125, 0.75, 21, -40, 6, 20, 55, 980,
+    [23.3739215897756, 0.910211157436571, -0.0717747652363735, 0.0108810889910724, -0.0076278721162469, -0.00449509197888889, 0.0000301982264953922, -0.000081214439746034, -0.00000525428060767996, 0.0000357798032961389],
+    [0.949014584172809, -0.0533325946351576, 0.128563290043878, -0.0016058054036619, 0.00304226259129386, -0.00096658245735563, -0.0000123693392127281, 0.0000201510489808851, -0.00000449503700490059, 0.00000437556814194842],
+    null],
+  ['Refcomp', 'SPC4-33H', 'recip', 'R404a', 33.1, 1.375, 1.125, 42, -40, 6, 20, 55, 1420,
+    [47.4228064533101, 1.72063646181651, -0.493096913803358, 0.0223169203329577, -0.0156943885270638, 0.000076775251313879, 0.0000908445080248089, -0.000168802493353679, -0.00000608490911821246, -0.00000129611887022215],
+    [1.81937524571359, -0.102412853187065, 0.26869525357648, -0.00386993041681435, 0.00559886853126657, -0.00349800382221617, -0.0000367325161229322, 0.0000459480450847456, -0.0000167517961258678, 0.0000244992731620101],
+    null],
+  // --- Xecom XR (R404a): capacity C_C, power P_C, mass M_C (Вт/кг/ч, mult=1000) ---
+  ['Xecom', 'XR45B-A1-101', 'scroll', 'R404a', 42.7, 0.875, 1.125, 24, -30, 10, 10, 65, 1050,
+    [10494.0013403915, 377.739885851376, -115.930300987745, 5.14660867755814, -3.55942475968608, 0.613623242437757, 0.0280929579681781, -0.0361699635904867, 0.00153414461698675, -0.0072180964689555],
+    [558.834054241772, 13.4143827227768, 56.5191165373687, 0.0865880951172315, -0.0108415034597429, -0.856486170273855, -0.00112530208215313, -0.00378852953091571, 0.0016753046123691, 0.00931642390388704],
+    [216.509746698748, 7.27775933150175, -0.873746977375421, 0.0938378667385673, -0.0304875669024017, 0.0148243868497911, 0.000669724429147037, -0.0000996076820787671, 0.000250803255052841, -0.000120265292372154]],
+  ['Xecom', 'XR91B-A1-101', 'scroll', 'R404a', 82, 0.875, 1.125, 24, -30, 10, 10, 65, 1750,
+    [20942.6747873356, 735.511553478419, -202.511517769775, 9.6765878095424, -5.81111362717163, 0.457162931487895, 0.0426859672406243, -0.0688857848582962, -0.0132059311737645, -0.00929805103428458],
+    [2136.949859248, 24.6672224971985, 16.0536860005425, -0.0205640020440841, -0.377985328439664, 0.459846031531923, -0.00417768972893329, -0.00762262507344021, 0.00780368437339913, 0.00329357938382691],
+    [426.896165025714, 13.8423578295524, -0.664546662947291, 0.167266228960976, -0.0193300520411808, 0.004369990777308, 0.000867266844934033, -0.000144852228677983, -0.00000163348607062532, -0.0000805242650238992]],
+  ['Xecom', 'XR162B-A1-101', 'scroll', 'R404a', 146, 0.875, 1.125, 24, -30, 10, 10, 65, 2900,
+    [38541.1747104207, 1387.32011275708, -425.775652132042, 18.9018795420752, -13.072651840415, 2.25364624517442, 0.103176626890031, -0.132840938646659, 0.00563444771889982, -0.0265098069965359],
+    [1907.70120728995, 45.7929038523112, 192.940258445043, 0.295587236207708, -0.0370098226512895, -2.92380124055874, -0.0038414626388546, -0.0129329669606256, 0.0057190155240831, 0.0318036329285347],
+    [795.172377739256, 26.7289275726497, -3.20899932179403, 0.344637068841552, -0.111971309115088, 0.0544453385089211, 0.00245968784726734, -0.000365828316187144, 0.000921122022734601, -0.000441696793312024]],
+  // --- Xecom XFV (R404a, низкотемпературные) ---
+  ['Xecom', 'XFV42B-A1-101', 'scroll', 'R404a', 42.7, 0.875, 1.125, 24, -40, 0, 15, 60, 1350,
+    [24829.2097394563, 609.332808562745, -192.953701302696, 3.28133967678293, -3.45841883786925, 1.67767099161618, -0.0235756913249167, -0.0415512830988689, -0.017418466084537, -0.0192804668544188],
+    [7759.05200865321, 29.9500208581711, -340.482737864949, -0.452067222216101, -0.507372795730523, 8.92126173328326, 0.00302018140713802, 0.0274551316825141, 0.0258756348521388, -0.0533573082223191],
+    [506.943157794014, 13.9100086080925, -2.11671851869002, 0.115288856199582, -0.0121176936824613, 0.0369519894138995, -0.0000931730778749314, -0.000539015124046398, -0.000562142751870485, -0.000484531555185785]],
+  ['Xecom', 'XFV100B-A1-101', 'scroll', 'R404a', 98.7, 0.875, 1.125, 24, -40, 0, 15, 60, 2600,
+    [59374.1966616351, 1457.10013370138, -461.411006262645, 7.84668069124913, -8.27012967188494, 4.01182198990611, -0.0563766668487336, -0.0993617562397806, -0.0416528808008026, -0.0461054686147262],
+    [18611.413788198, 71.8402493674387, -816.706102121234, -1.08436057953496, -1.21702046019073, 21.3991726625597, 0.00724442184702196, 0.065855830813206, 0.0620671374194147, -0.127986633011675],
+    [1212.25540995937, 33.2630647489214, -5.06172051131969, 0.275690671454135, -0.0289772053274453, 0.0883634894690199, -0.000222806743157843, -0.00128895011316739, -0.00134425342470141, -0.00115866258468549]],
+  // --- Xecom XR (R507a) ---
+  ['Xecom', 'XR45B-A1-101', 'scroll', 'R507a', 42.7, 0.875, 1.125, 24, -30, 10, 10, 65, 1080,
+    [10089.5357928737, 366.631199501717, -30.0374204646064, 4.9646917863704, -2.22358671192061, -1.57953394800759, 0.021799586415384, -0.0364698271368966, -0.0192940451402427, 0.0065641255809093],
+    [1249.71051491904, 18.6324249269656, 7.01012448873474, 0.291691600774233, -0.434846991575995, 0.38420472817241, 0.00277719291568999, -0.00572433922822403, 0.00743023823274953, -0.00105712868990745],
+    [224.421921907479, 7.12070168636918, -0.0170169571659472, 0.0890832735770724, -0.000515590604568198, -0.0012571950143345, 0.000505863923033725, -0.0000353048505469356, -0.0000444644665061496, -5.70855389792283e-7]],
+  ['Xecom', 'XR162B-A1-101', 'scroll', 'R507a', 146, 0.875, 1.125, 24, -30, 10, 10, 65, 2950,
+    [34761.8295414055, 1263.1673178882, -103.489131639543, 17.1050272315558, -7.66100673727663, -5.44201965053599, 0.0751068852869362, -0.125650811420375, -0.0664743780972614, 0.0226155883625541],
+    [34761.8295414055, 1263.1673178882, -103.489131639543, 17.1050272315558, -7.66100673727663, -5.44201965053599, 0.0751068852869362, -0.125650811420375, -0.0664743780972614, 0.0226155883625541],
+    [773.208663755278, 24.5332016206925, -0.0586327150871138, 0.306921722106343, -0.00177644506599798, -0.00433136936770557, 0.00174287082935637, -0.000121637568246856, -0.000153194329594698, -0.00000196745658822409]]
+];
+
+function seedManufacturers() {
+  const ins = db.prepare('INSERT OR IGNORE INTO manufacturers (name, country) VALUES (?,?)');
+  for (const m of MANUFACTURERS) ins.run(m[0], m[1]);
+}
+
+function seedCompressors() {
+  const ins = db.prepare(`
+    INSERT OR IGNORE INTO compressors
+    (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
+     displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
+     min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
+     poly_capacity, poly_power, poly_mass, poly_multiplier)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  for (const c of COMPRESSORS) {
+    const [mfr, model, type, ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price, pCap, pPow, pMas] = c;
+    const m = db.prepare('SELECT id FROM manufacturers WHERE name = ?').get(mfr);
+    if (!m) continue;
+    // Refcomp: полиномы в кВт (mult=1); Xecom: в Вт/кг/ч (mult=1000)
+    const mult = mfr === 'Refcomp' ? 1 : 1000;
+    ins.run(m.id, model, type, ref, 50, 400, vh, dS, dD, imax,
+      teMin, teMax, tcMin, tcMax, price,
+      JSON.stringify(pCap), JSON.stringify(pPow),
+      pMas ? JSON.stringify(pMas) : null, mult);
+  }
+}
+
+// ================= ДИАМЕТРЫ ТРУБ =================
+const PIPE_SIZES = [
+  [0.25, 6.35, 0.8], [0.375, 9.52, 0.8], [0.5, 12.7, 0.8], [0.625, 15.88, 1.0],
+  [0.75, 19.05, 1.0], [0.875, 22.22, 1.2], [1.125, 28.58, 1.2], [1.375, 34.92, 1.2],
+  [1.625, 41.28, 1.5], [2.125, 53.98, 2.0], [2.625, 66.675, 2.0], [3.125, 79.375, 2.0],
+  [4, 100, 4], [5, 125, 4], [6, 150, 4]
+];
+
+function seedPipeSizes() {
+  const ins = db.prepare('INSERT OR IGNORE INTO pipe_sizes (size_in, od_mm, wall_mm) VALUES (?,?,?)');
+  for (const p of PIPE_SIZES) ins.run(p[0], p[1], p[2]);
+}
+
+// ================= КАТАЛОГ КОМПОНЕНТОВ =================
+// [категория, артикул, название, размер in, cap1 кВт (t=10), cap2 кВт (t=-30), объем л, цена EUR]
+const COMPONENTS = [
+  // Корпуса (лист «Корпуса»)
+  ['housing', 'ZipBox3', 'ККБ ZipBox3', null, null, null, null, 400],
+  ['housing', 'ZipBox4', 'ККБ ZipBox4', null, null, null, null, 600],
+  ['housing', 'ZipBox5', 'ККБ ZipBox5', null, null, null, null, 900],
+  ['housing', 'FRAME-OS-1', 'Рама открытая S 1КМ', null, null, null, null, 200],
+  ['housing', 'FRAME-OS-2', 'Рама открытая S 2КМ', null, null, null, null, 300],
+  ['housing', 'FRAME-OS-3', 'Рама открытая S 3КМ', null, null, null, null, 400],
+  ['housing', 'FRAME-OS-4', 'Рама открытая S 4КМ', null, null, null, null, 500],
+  ['housing', 'FRAME-Z-1', 'Рама закрытая S 1КМ', null, null, null, null, 300],
+  ['housing', 'FRAME-Z-2', 'Рама закрытая S 2КМ', null, null, null, null, 400],
+  ['housing', 'FRAME-Z-3', 'Рама закрытая S 3КМ', null, null, null, null, 500],
+  ['housing', 'FRAME-Z-4', 'Рама закрытая S 4КМ', null, null, null, null, 600],
+  ['housing', 'FRAME-ZM-1', 'Рама закрытая M 1КМ', null, null, null, null, 400],
+  ['housing', 'FRAME-ZM-2', 'Рама закрытая M 2КМ', null, null, null, null, 500],
+  ['housing', 'FRAME-ZM-3', 'Рама закрытая M 3КМ', null, null, null, null, 600],
+  ['housing', 'FRAME-ZM-4', 'Рама закрытая M 4КМ', null, null, null, null, 700],
+  // KVR / NRD / ICS (лист KVR)
+  ['kvr_valve', 'KVR15', 'Клапан KVR15', 0.625, 11, 11, null, 85],
+  ['kvr_valve', 'KVR22', 'Клапан KVR22', 0.875, 11, 11, null, 95],
+  ['kvr_valve', 'KVR28', 'Клапан KVR28', 1.125, 34, 31, null, 120],
+  ['kvr_valve', 'KVR35', 'Клапан KVR35', 1.375, 34, 31, null, 140],
+  ['kvr_valve', '2xKVR35', '2× KVR35', 1.375, 70, 60, null, 280],
+  ['kvr_valve', 'ICS32', 'Клапан ICS32', 1.375, 120, 100, null, 420],
+  ['kvr_valve', 'ICS40', 'Клапан ICS40', 1.625, 220, 160, null, 520],
+  ['kvr_valve', 'ICS50', 'Клапан ICS50', 2.125, 350, 260, null, 640],
+  ['kvr_valve', 'ICS65', 'Клапан ICS65', 2.625, 560, 420, null, 780],
+  ['kvr_valve', 'ICS80', 'Клапан ICS80', 3.125, 670, 510, null, 950],
+  ['kvr_valve', 'ICS100', 'Клапан ICS100', 4, 1100, 860, null, 1250],
+  ['kvr_valve', 'ICS125', 'Клапан ICS125', 5, 1700, 1200, null, 1600],
+  ['kvr_valve', 'NRD12', 'Клапан NRD12', 0.625, null, null, null, 75],
+  ['kvr_valve', 'KVD12', 'Клапан KVD12', 0.625, null, null, null, 90],
+  // Обратные клапаны (лист «Обратный клапан»)
+  ['check_valve', 'NRV 10s', 'Обратный клапан NRV 10s', 0.375, null, null, null, 6.2],
+  ['check_valve', 'NRV 12s', 'Обратный клапан NRV 12s', 0.5, null, null, null, 6.8],
+  ['check_valve', 'NRV 16s', 'Обратный клапан NRV 16s', 0.625, null, null, null, 6.56],
+  ['check_valve', 'NRV 19s', 'Обратный клапан NRV 19s', 0.75, null, null, null, 10.3],
+  ['check_valve', 'NRVH 22s', 'Обратный клапан NRVH 22s', 0.875, null, null, null, 12.5],
+  ['check_valve', 'NRVH 28s', 'Обратный клапан NRVH 28s', 1.125, null, null, null, 15.8],
+  ['check_valve', 'NRVH 35s', 'Обратный клапан NRVH 35s', 1.375, null, null, null, 19.4],
+  ['check_valve', 'NRVH 42s', 'Обратный клапан NRVH 42s', 1.625, null, null, null, 24.6],
+  ['check_valve', 'CHV50', 'Обратный клапан CHV50', 2.125, null, null, null, 32],
+  ['check_valve', 'CHV65', 'Обратный клапан CHV65', 2.625, null, null, null, 41],
+  ['check_valve', 'CHV80', 'Обратный клапан CHV80', 3.125, null, null, null, 55],
+  ['check_valve', 'CHV100', 'Обратный клапан CHV100', 4, null, null, null, 72],
+  ['check_valve', 'CHV125', 'Обратный клапан CHV125', 5, null, null, null, 95],
+  // Шаровые краны (лист «Шаровый кран»)
+  ['ball_valve', 'FP-BVa-038', 'Шаровый кран FP-BVa-038', 0.375, null, null, null, 3.9],
+  ['ball_valve', 'FP-BVa-012', 'Шаровый кран FP-BVa-012', 0.5, null, null, null, 4.2],
+  ['ball_valve', 'FP-BVa-058', 'Шаровый кран FP-BVa-058', 0.625, null, null, null, 4.56],
+  ['ball_valve', 'FP-BVa-078', 'Шаровый кран FP-BVa-078', 0.875, null, null, null, 6.84],
+  ['ball_valve', 'FP-BVa-118', 'Шаровый кран FP-BVa-118', 1.125, null, null, null, 8.9],
+  ['ball_valve', 'FP-BV-138', 'Шаровый кран FP-BV-138', 1.375, null, null, null, 14.5],
+  ['ball_valve', 'FP-BV-158', 'Шаровый кран FP-BV-158', 1.625, null, null, null, 18.2],
+  ['ball_valve', 'FP-BV-218', 'Шаровый кран FP-BV-218', 2.125, null, null, null, 44.25],
+  ['ball_valve', 'FP-BV-258', 'Шаровый кран FP-BV-258', 2.625, null, null, null, 58],
+  ['ball_valve', 'FP-BV-318', 'Шаровый кран FP-BV-318', 3.125, null, null, null, 76],
+  // Виброгасители (лист «Виброгаситель»)
+  ['vibration', 'FP-YVA-038', 'Виброгаситель FP-YVA-038', 0.375, null, null, null, 8.5],
+  ['vibration', 'FP-YVA-012', 'Виброгаситель FP-YVA-012', 0.5, null, null, null, 9.2],
+  ['vibration', 'FP-YVA-058', 'Виброгаситель FP-YVA-058', 0.625, null, null, null, 10.8],
+  ['vibration', 'FP-YVA-078', 'Виброгаситель FP-YVA-078', 0.875, null, null, null, 12.4],
+  ['vibration', 'FP-YVA-118', 'Виброгаситель FP-YVA-118', 1.125, null, null, null, 15.6],
+  ['vibration', 'FP-YVA-138', 'Виброгаситель FP-YVA-138', 1.375, null, null, null, 19.8],
+  ['vibration', 'FP-YVA-158', 'Виброгаситель FP-YVA-158', 1.625, null, null, null, 24.5],
+  ['vibration', 'FP-YVA-218', 'Виброгаситель FP-YVA-218', 2.125, null, null, null, 33],
+  ['vibration', 'FP-YVA-258', 'Виброгаситель FP-YVA-258', 2.625, null, null, null, 42],
+  ['vibration', 'FP-VA-318', 'Виброгаситель FP-VA-318', 3.125, null, null, null, 55],
+  // Фильтры-осушители DCL и всасывания SDF (лист «Фильтры»)
+  ['filter_drier', 'DCL053', 'Фильтр-осушитель DCL053', 0.375, null, null, null, 12.5],
+  ['filter_drier', 'DCL304', 'Фильтр-осушитель DCL304', 0.5, null, null, null, 14.8],
+  ['filter_drier', 'DCL305', 'Фильтр-осушитель DCL305', 0.625, null, null, null, 16.9],
+  ['filter_drier', 'DCL307', 'Фильтр-осушитель DCL307', 0.875, null, null, null, 19.5],
+  ['filter_drier', 'DCL309', 'Фильтр-осушитель DCL309', 1.125, null, null, null, 23.4],
+  ['suction_filter', 'FP-SDF-058', 'Фильтр всасывания FP-SDF-058', 0.625, null, null, null, 15.2],
+  ['suction_filter', 'FP-SDF-078', 'Фильтр всасывания FP-SDF-078', 0.875, null, null, null, 18.6],
+  ['suction_filter', 'FP-SDF-118', 'Фильтр всасывания FP-SDF-118', 1.125, null, null, null, 22.4],
+  ['suction_filter', 'FP-SDF-138', 'Фильтр всасывания FP-SDF-138', 1.375, null, null, null, 27.8],
+  ['suction_filter', 'FP-SDF-158', 'Фильтр всасывания FP-SDF-158', 1.625, null, null, null, 33.5],
+  ['suction_filter', 'FP-SDF-218', 'Фильтр всасывания FP-SDF-218', 2.125, null, null, null, 18.22],
+  ['suction_filter', 'FP-SDF-2-258', 'Фильтр всасывания FP-SDF-2-258', 2.625, null, null, null, 48],
+  ['drier_insert', 'FP-48DM', 'Вставка осушительная FP-48DM', null, null, null, null, 9.8],
+  ['drier_insert', 'FP-48F', 'Вставка FP-48F', null, null, null, null, 11.2],
+  // Смотровые глазки (лист «Смотровой глазок»)
+  ['sight_glass', 'SGP10s', 'Смотровой глазок SGP10s', 0.375, null, null, null, 4.8],
+  ['sight_glass', 'SGP12s', 'Смотровой глазок SGP12s', 0.5, null, null, null, 5.1],
+  ['sight_glass', 'SGP16s', 'Смотровой глазок SGP16s', 0.625, null, null, null, 5.37],
+  ['sight_glass', 'SGP22s', 'Смотровой глазок SGP22s', 0.875, null, null, null, 6.9],
+  ['sight_glass', 'SGP28s', 'Смотровой глазок SGP28s', 1.125, null, null, null, 8.4],
+  // Линейные ресиверы (лист «Линейный_Ресивер»)
+  ['liquid_receiver', 'FP-LR-1,0', 'Ресивер FP-LR-1,0', 0.375, 1, 0.5, 1.0, 18],
+  ['liquid_receiver', 'FP-LR-1,6', 'Ресивер FP-LR-1,6', 0.5, 4, 10, 1.6, 24],
+  ['liquid_receiver', 'FP-LR-2,5', 'Ресивер FP-LR-2,5', 0.5, 10, 22, 2.5, 31],
+  ['liquid_receiver', 'FP-LR-4,0', 'Ресивер FP-LR-4,0', 0.5, 100, 160, 4.0, 42],
+  ['liquid_receiver', 'FP-LR-6,3', 'Ресивер FP-LR-6,3', 0.5, 200, 300, 6.3, 52],
+  ['liquid_receiver', 'FP-LR-8,0', 'Ресивер FP-LR-8,0', 0.5, 400, 440, 8.0, 63],
+  ['liquid_receiver', 'FP-LR-10,0', 'Ресивер FP-LR-10,0', 1.125, null, null, 10, 78],
+  ['liquid_receiver', 'FP-LR-12,5', 'Ресивер FP-LR-12,5', 1.125, null, null, 12.5, 89],
+  ['liquid_receiver', 'FP-LR-16', 'Ресивер FP-LR-16', 1.125, null, null, 16, 104],
+  ['liquid_receiver', 'FP-LR-20', 'Ресивер FP-LR-20', 1.125, null, null, 20, 122],
+  ['liquid_receiver', 'FP-LR-25', 'Ресивер FP-LR-25', 1.125, null, null, 25, 141],
+  ['liquid_receiver', 'FP-LR-32,5', 'Ресивер FP-LR-32,5', 1.125, 10, 22, 32.5, 168],
+  ['liquid_receiver', 'FP-LR-40', 'Ресивер FP-LR-40', 1.125, 100, 160, 40, 53.17],
+  ['liquid_receiver', 'FP-LR-50', 'Ресивер FP-LR-50', 1.375, 200, 300, 50, 205],
+  ['liquid_receiver', 'FP-LR-63', 'Ресивер FP-LR-63', 1.375, 400, 440, 63, 244],
+  ['liquid_receiver', 'FP-LR-80', 'Ресивер FP-LR-80', 1.375, null, null, 80, 288],
+  ['liquid_receiver', 'FP-LR-100', 'Ресивер FP-LR-100', 1.625, null, null, 100, 335],
+  ['liquid_receiver', 'FP-LR-120', 'Ресивер FP-LR-120', 1.625, null, null, 120, 385],
+  ['liquid_receiver', 'FP-LR-160', 'Ресивер FP-LR-160', 2.125, null, null, 160, 460],
+  ['liquid_receiver', 'FP-LR-200', 'Ресивер FP-LR-200', 2.125, null, null, 200, 545],
+  ['liquid_receiver', 'FP-LR-250', 'Ресивер FP-LR-250', 2.125, null, null, 250, 640],
+  // Отделители жидкости (лист «Отделитель жидкости»)
+  ['liquid_separator', 'FP-AS-2,0-012', 'Отделитель жидкости FP-AS-2,0-012', 0.5, null, null, 2.0, 22],
+  ['liquid_separator', 'FP-AS-2,0-058', 'Отделитель жидкости FP-AS-2,0-058', 0.625, null, null, 2.0, 25],
+  ['liquid_separator', 'FP-AS-3,5-078', 'Отделитель жидкости FP-AS-3,5-078', 0.875, null, null, 3.5, 29],
+  ['liquid_separator', 'FP-AS-3,5-118', 'Отделитель жидкости FP-AS-3,5-118', 1.125, null, null, 3.5, 33],
+  ['liquid_separator', 'FP-AS-7,0-138', 'Отделитель жидкости FP-AS-7,0-138', 1.375, null, null, 7.0, 41],
+  ['liquid_separator', 'FP-AS-9,0-158', 'Отделитель жидкости FP-AS-9,0-158', 1.625, null, null, 9.0, 48],
+  ['liquid_separator', 'FP-AS-12,0-218', 'Отделитель жидкости FP-AS-12,0-218', 2.125, null, null, 12.0, 37.5],
+  ['liquid_separator', 'FP-AS-25,0-258', 'Отделитель жидкости FP-AS-25,0-258', 2.625, null, null, 25.0, 68],
+  ['liquid_separator', 'FP-AS-45,0-318', 'Отделитель жидкости FP-AS-45,0-318', 3.125, null, null, 45.0, 95],
+  ['liquid_separator', 'FP-AS-60,0-114ST', 'Отделитель жидкости FP-AS-60,0-114ST', 4, null, null, 60.0, 130],
+  // Маслоотделители (лист «Маслоотделители»): cap при tкип=10 / tкип=-30
+  ['oil_separator', 'FP-OS-2,0-012', 'Маслоотделитель FP-OS-2,0-012', 0.5, 9, 13, 2.0, 38],
+  ['oil_separator', 'FP-OS-2,0-058', 'Маслоотделитель FP-OS-2,0-058', 0.625, 14, 24, 2.0, 42],
+  ['oil_separator', 'FP-OS-3,5-078', 'Маслоотделитель FP-OS-3,5-078', 0.875, 22, 41, 3.5, 52],
+  ['oil_separator', 'FP-OS-3,5-118', 'Маслоотделитель FP-OS-3,5-118', 1.125, 25, 45, 3.5, 58],
+  ['oil_separator', 'FP-OS-5,0-118', 'Маслоотделитель FP-OS-5,0-118', 1.125, 55, 87, 5.0, 72],
+  ['oil_separator', 'FP-OS-5,0-138', 'Маслоотделитель FP-OS-5,0-138', 1.375, 60, 95, 5.0, 78],
+  ['oil_separator', 'FP-OS-7,0-138', 'Маслоотделитель FP-OS-7,0-138', 1.375, 72, 105, 7.0, 88],
+  ['oil_separator', 'FP-OS-7,0-158', 'Маслоотделитель FP-OS-7,0-158', 1.625, 80, 113, 7.0, 95],
+  ['oil_separator', 'FP-OS-12,0-218', 'Маслоотделитель FP-OS-12,0-218', 2.125, 60, 133, 12.0, 80.43],
+  ['oil_separator', 'FP-OS-12,0-258', 'Маслоотделитель FP-OS-12,0-258', 2.625, 100, 165, 12.0, 92],
+  ['oil_separator', 'FP-OS-25,0-218', 'Маслоотделитель FP-OS-25,0-218', 2.125, 245, 395, 25.0, 145],
+  ['oil_separator', 'FP-OS-25,0-258', 'Маслоотделитель FP-OS-25,0-258', 2.625, 275, 432, 25.0, 158],
+  ['oil_separator', 'FP-OS-45,0-258', 'Маслоотделитель FP-OS-45,0-258', 2.625, 400, 534, 45.0, 210],
+  ['oil_separator', 'FP-OS-80,0-76ST', 'Маслоотделитель FP-OS-80,0-76ST', 3.125, 470, 680, 80.0, 290],
+  // Масляные ресиверы (лист «Масляные ресиверы»)
+  ['oil_receiver', 'FP-OR-5,0', 'Масляный ресивер FP-OR-5,0', null, 0, 51, 5.0, 35],
+  ['oil_receiver', 'FP-OR-8,0', 'Масляный ресивер FP-OR-8,0', null, 60, 120, 8.0, 44],
+  ['oil_receiver', 'FP-OR-12,0', 'Масляный ресивер FP-OR-12,0', null, 160, 240, 12.0, 55],
+  ['oil_receiver', 'FP-OR-16,0', 'Масляный ресивер FP-OR-16,0', null, 280, 400, 16.0, 68],
+  ['oil_receiver', 'FP-OR-25,0', 'Масляный ресивер FP-OR-25,0', null, 410, 720, 25.0, 92],
+  ['oil_receiver', 'FP-OR-40,0', 'Масляный ресивер FP-OR-40,0', null, 750, 1150, 40.0, 125]
+];
+
+function seedComponents() {
+  const ins = db.prepare(`
+    INSERT OR IGNORE INTO components
+    (category, code, name, size_in, capacity_kw, capacity_kw2, volume_l, price_eur)
+    VALUES (?,?,?,?,?,?,?,?)`);
+  for (const c of COMPONENTS) ins.run(...c);
+}
+
+// ================= ОПЦИИ =================
+const OPTIONS = [
+  { code: 'housing', name: 'Корпус', section: 'housing', component_category: 'housing',
+    sizing: 'none', auto_rule: '{"always":true}', mandatory: 1, sort_order: 1 },
+  { code: 'noise', name: 'Шумоизоляция', section: 'housing', component_category: null,
+    sizing: 'none', price_eur: 120, auto_rule: '', sort_order: 2 },
+  { code: 'vibration', name: 'Виброгасители', section: 'compressors', component_category: 'vibration',
+    sizing: 'pipe', pipe_line: 'suction', auto_rule: '{"always":true}', mandatory: 1, sort_order: 10 },
+  { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compressors',
+    component_category: null, sizing: 'none', price_eur: 180,
+    auto_rule: '{"min_compressors":2}', sort_order: 11 },
+  { code: 'inverter', name: 'Инвертор', section: 'compressors', component_category: null,
+    sizing: 'none', price_eur: 650, auto_rule: '', sort_order: 12 },
+  { code: 'unloader', name: 'Отжим клапанов', section: 'compressors', component_category: null,
+    sizing: 'none', price_eur: 210, auto_rule: '', sort_order: 13 },
+  { code: 'check_valves', name: 'Обратные клапана после КМ', section: 'compressors',
+    component_category: 'check_valve', sizing: 'pipe', pipe_line: 'discharge',
+    auto_rule: '{"min_compressors":2}', sort_order: 14 },
+  { code: 'oil_separator', name: 'Маслоотделитель', section: 'discharge', component_category: 'oil_separator',
+    sizing: 'capacity', auto_rule: '{"max_tevap":-25}', sort_order: 20 },
+  { code: 'oil_receiver', name: 'Масляный ресивер', section: 'discharge', component_category: 'oil_receiver',
+    sizing: 'capacity', auto_rule: '{"min_compressors":2,"max_tevap":-25}', sort_order: 21 },
+  { code: 'erum', name: 'ЭРУМ (электронный регулятор уровня масла)', section: 'discharge',
+    component_category: null, sizing: 'none', price_eur: 240,
+    auto_rule: '{"min_compressors":2,"max_tevap":-25}', sort_order: 22 },
+  { code: 'winter_kvr', name: 'Зимняя опция KVR+NRD+NRV', section: 'winter', component_category: 'kvr_valve',
+    sizing: 'capacity', auto_rule: '{"max_tcond":25}', sort_order: 30 },
+  { code: 'winter_cpr', name: 'Клапан поддержания давления до себя', section: 'winter',
+    component_category: null, sizing: 'none', price_eur: 95,
+    auto_rule: '{"max_tcond":25}', sort_order: 31 },
+  { code: 'winter_nrv_drain', name: 'Обратный клапан на сливе в ресивер', section: 'winter',
+    component_category: 'check_valve', sizing: 'pipe', pipe_line: 'liquid',
+    auto_rule: '{"max_tcond":25}', sort_order: 32 },
+  { code: 'winter_diff', name: 'Обратный дифференциальный клапан', section: 'winter',
+    component_category: null, sizing: 'none', price_eur: 88,
+    auto_rule: '{"max_tcond":25}', sort_order: 33 },
+  { code: 'receiver_heater', name: 'Подогрев ресивера + прессостат', section: 'winter',
+    component_category: null, sizing: 'none', price_eur: 35,
+    auto_rule: '{"max_tcond":25}', sort_order: 34 },
+  { code: 'liquid_receiver', name: 'Ресивер', section: 'liquid', component_category: 'liquid_receiver',
+    sizing: 'capacity', auto_rule: '{"always":true}', mandatory: 1, sort_order: 40 },
+  { code: 'liquid_nrv', name: 'Обратный клапан на ресивере', section: 'liquid', component_category: 'check_valve',
+    sizing: 'pipe', pipe_line: 'liquid', auto_rule: '{"always":true}', mandatory: 1, sort_order: 41 },
+  { code: 'filter_drier', name: 'Фильтр-осушитель DCL (разборный)', section: 'liquid',
+    component_category: 'filter_drier', sizing: 'pipe', pipe_line: 'liquid',
+    auto_rule: '{"always":true}', mandatory: 1, sort_order: 42 },
+  { code: 'drier_insert', name: 'Вставка осушительная', section: 'liquid', component_category: 'drier_insert',
+    sizing: 'none', auto_rule: '{"always":true}', mandatory: 1, sort_order: 43 },
+  { code: 'sight_glass', name: 'Смотровой глазок', section: 'liquid', component_category: 'sight_glass',
+    sizing: 'pipe', pipe_line: 'liquid', auto_rule: '{"always":true}', mandatory: 1, sort_order: 44 },
+  { code: 'liquid_ball_valve', name: 'Шаровый кран на выходе агрегата', section: 'liquid',
+    component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',
+    auto_rule: '{"always":true}', mandatory: 1, sort_order: 45 },
+  { code: 'liquid_separator', name: 'Отделитель жидкости', section: 'suction', component_category: 'liquid_separator',
+    sizing: 'capacity', auto_rule: '{"max_tevap":-20}', sort_order: 50 },
+  { code: 'suction_filter', name: 'Фильтр разборный с грязевой вставкой', section: 'suction',
+    component_category: 'suction_filter', sizing: 'pipe', pipe_line: 'suction',
+    auto_rule: '{"always":true}', mandatory: 1, sort_order: 51 },
+  { code: 'suction_ball_valve', name: 'Шаровый кран', section: 'suction', component_category: 'ball_valve',
+    sizing: 'pipe', pipe_line: 'suction', auto_rule: '{"always":true}', mandatory: 1, sort_order: 52 },
+  { code: 'service_valve', name: 'Шаровый кран перед обратным клапаном ресиверной станции (сервис)',
+    section: 'extra', component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',
+    auto_rule: '', sort_order: 60 },
+  { code: 'discharge_valve', name: 'Шаровый вентиль на нагнетании на выходе из агрегата',
+    section: 'extra', component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'discharge',
+    auto_rule: '', sort_order: 61 },
+  { code: 'level_switch', name: 'Реле уровня фреона', section: 'extra', component_category: null,
+    sizing: 'none', price_eur: 145, auto_rule: '', sort_order: 62 },
+  { code: 'solenoid', name: 'Соленоидный вентиль на линии жидкости', section: 'extra',
+    component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',
+    auto_rule: '', sort_order: 63 }
+];
+
+function seedOptions() {
+  const ins = db.prepare(`
+    INSERT OR IGNORE INTO options
+    (code, name, section, component_category, sizing, pipe_line, description, price_eur, auto_rule, mandatory, sort_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+  for (const o of OPTIONS) {
+    ins.run(o.code, o.name, o.section, o.component_category || null, o.sizing || 'none',
+      o.pipe_line || null, o.description || '', o.price_eur || 0, o.auto_rule || '',
+      o.mandatory || 0, o.sort_order || 0);
+  }
+}
+
+// ================= АДМИН =================
+function seedAdmin() {
+  const exists = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
+  if (exists) return;
+  const hash = bcrypt.hashSync('admin123', 10);
+  db.prepare(`INSERT INTO users (email, password_hash, name, role, status, discount_percent)
+              VALUES (?,?,?,?,?,?)`).run('admin@local', hash, 'Администратор', 'admin', 'active', 0);
+}
+
+function run() {
+  seedRefrigerants();
+  seedManufacturers();
+  seedCompressors();
+  seedPipeSizes();
+  seedComponents();
+  seedOptions();
+  seedAdmin();
+  console.log('БД наполнена демонстрационными данными.');
+  console.log('Администратор: admin@local / admin123');
+}
+
+run();

@@ -1,0 +1,40 @@
+<%- include('partials/header', { title: 'Регистрация' }) %>
+
+<div class="auth-card">
+  <h1>Регистрация</h1>
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div class="alert alert-success">
+      ✅ Заявка отправлена. Администратор получит уведомление и подтвердит ваш доступ.
+      Вы сможете войти после одобрения.
+    </div>
+    <p><a href="/login" class="btn btn-primary">К входу</a></p>
+  <% } else { %>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <form method="POST" action="/register">
+      <div class="form-group">
+        <label>Имя *</label>
+        <input type="text" name="name" required>
+      </div>
+      <div class="form-group">
+        <label>Компания</label>
+        <input type="text" name="company">
+      </div>
+      <div class="form-group">
+        <label>Телефон</label>
+        <input type="tel" name="phone">
+      </div>
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Пароль (мин. 6 символов) *</label>
+        <input type="password" name="password" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Отправить заявку</button>
+    </form>
+    <p class="auth-hint">Уже есть аккаунт? <a href="/login">Войти</a></p>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

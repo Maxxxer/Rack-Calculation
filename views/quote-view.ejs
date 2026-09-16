@@ -1,0 +1,84 @@
+<%- include('partials/header', { title: 'КП ' + q.number }) %>
+
+<div class="quote-header">
+  <h1>Коммерческое предложение <%= q.number %></h1>
+  <p>Клиент: <b><%= q.user_name %></b> (<%= q.company || q.email %>) · Дата: <%= q.created_at %> ·
+     Статус: <span class="status status-<%= q.status %>"><%= q.status %></span></p>
+</div>
+
+<% const t = result.totals; %>
+
+<div class="grid-2">
+  <fieldset class="card">
+    <legend>Технические характеристики</legend>
+    <table class="kv">
+      <tr><td>Хладагент</td><td><%= result.input.refrigerant %></td></tr>
+      <tr><td>t кипения / t конденсации</td><td><%= result.input.tEvap %> / <%= result.input.tCond %> °C</td></tr>
+      <tr><td>Холодопроизводительность</td><td><b><%= result.selection.totals.q_kw %> кВт</b></td></tr>
+      <tr><td>Потребляемая мощность</td><td><%= result.selection.totals.power_kw %> кВт</td></tr>
+      <tr><td>COP</td><td><%= result.selection.totals.cop %></td></tr>
+      <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
+      <tr><td>Трубопроводы (всас/нагн/жидк)</td>
+          <td><%= result.piping.common.suction.recommended.size_in %> / <%= result.piping.common.discharge.recommended.size_in %> / <%= result.piping.common.liquid.recommended.size_in %>"</td></tr>
+    </table>
+  </fieldset>
+
+  <fieldset class="card">
+    <legend>Стоимость</legend>
+    <table class="kv">
+      <tr><td>Материалы</td><td><%= t.materials_eur %> EUR</td></tr>
+      <tr><td>Мелочь (<%= t.petty_pct %>%)</td><td><%= t.petty_eur %> EUR</td></tr>
+      <tr><td>Работы (<%= t.labor_pct %>%)</td><td><%= t.labor_eur %> EUR</td></tr>
+      <tr><td>Профит (<%= t.profit_pct %>%)</td><td><%= t.profit_eur %> EUR</td></tr>
+      <tr class="total-row"><td>Итого без НДС</td><td><%= t.subtotal_eur %> EUR</td></tr>
+      <tr><td>Скидка <%= t.discount_percent %>%</td><td>−<%= t.discount_amount_eur %> EUR</td></tr>
+      <tr class="grand-row"><td>ВСЕГО</td><td><%= t.total_eur %> EUR</td></tr>
+    </table>
+  </fieldset>
+</div>
+
+<fieldset class="card">
+  <legend>Спецификация</legend>
+  <table class="table">
+    <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена, EUR</th><th>Сумма, EUR</th></tr>
+    <% result.bom.forEach((it, i) => { %>
+      <tr><td><%= i+1 %></td><td><%= it.article %></td><td><%= it.name %></td>
+          <td><%= it.qty %></td><td><%= it.unit_price_eur %></td><td><%= it.total_price_eur %></td></tr>
+    <% }) %>
+  </table>
+</fieldset>
+
+<div class="actions no-print">
+  <a href="/quotes/<%= encodeURIComponent(q.number) %>/print" class="btn btn-primary" target="_blank">🖨 Печатная форма КП</a>
+  <% if (q.status === 'draft') { %>
+    <form method="POST" action="/quotes/<%= encodeURIComponent(q.number) %>/status" class="inline-form">
+      <input type="hidden" name="status" value="sent">
+      <button type="submit" class="btn btn-primary">📤 Отправить на утверждение</button>
+    </form>
+  <% } %>
+  <% if (user.role === 'admin' && (q.status === 'sent' || q.status === 'draft')) { %>
+    <form method="POST" action="/quotes/<%= encodeURIComponent(q.number) %>/status" class="inline-form">
+      <input type="hidden" name="status" value="approved">
+      <button type="submit" class="btn btn-success">✅ Утвердить</button>
+    </form>
+    <form method="POST" action="/quotes/<%= encodeURIComponent(q.number) %>/status" class="inline-form">
+      <input type="hidden" name="status" value="rejected">
+      <button type="submit" class="btn btn-danger">❌ Отклонить</button>
+    </form>
+  <% } %>
+  <% if (q.status === 'approved') { %>
+    <a href="/quotes/<%= encodeURIComponent(q.number) %>/production" class="btn btn-success">🏭 Производственная спецификация</a>
+  <% } %>
+</div>
+
+<style>
+.status { padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; }
+.status-draft { background: #e5e7eb; color: #374151; }
+.status-sent { background: #dbeafe; color: #1e40af; }
+.status-approved { background: #d1fae5; color: #065f46; }
+.status-rejected { background: #fee2e2; color: #991b1b; }
+.quote-header { margin-bottom: 16px; }
+.quote-header p { color: #6b7280; font-size: 0.92rem; }
+</style>
+
+<%- include('partials/footer') %>

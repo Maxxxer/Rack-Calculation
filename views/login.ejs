@@ -1,0 +1,20 @@
+<%- include('partials/header', { title: 'Вход' }) %>
+
+<div class="auth-card">
+  <h1>Вход в систему</h1>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="POST" action="/login">
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" name="email" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>Пароль</label>
+      <input type="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Войти</button>
+  </form>
+  <p class="auth-hint">Нет аккаунта? <a href="/register">Зарегистрируйтесь</a> — доступ откроется после подтверждения администратором.</p>
+</div>
+
+<%- include('partials/footer') %>

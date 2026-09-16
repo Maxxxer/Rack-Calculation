@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>КП <%= q.number %></title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; font-size: 13px; padding: 32px; max-width: 900px; margin: 0 auto; }
+    .doc-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0b5fa5; padding-bottom: 14px; margin-bottom: 20px; }
+    .doc-brand { font-size: 22px; font-weight: 800; color: #0b5fa5; }
+    .doc-brand small { display: block; font-size: 11px; color: #6b7280; font-weight: 400; }
+    .doc-num { text-align: right; }
+    .doc-num h2 { color: #0b5fa5; font-size: 18px; }
+    .doc-num p { color: #6b7280; font-size: 12px; }
+    h3 { color: #0b5fa5; margin: 18px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    th, td { border: 1px solid #d1d5db; padding: 6px 9px; text-align: left; }
+    th { background: #eff6ff; color: #1e3a8a; font-size: 12px; }
+    .kv td { border: none; border-bottom: 1px dotted #cbd5e1; padding: 5px 4px; }
+    .kv td:first-child { color: #6b7280; width: 55%; }
+    .kv td:last-child { text-align: right; font-weight: 600; }
+    .two-col { display: flex; gap: 24px; }
+    .two-col > div { flex: 1; }
+    .totals { margin-left: auto; width: 340px; margin-top: 12px; }
+    .totals tr.total td { font-weight: 700; border-top: 2px solid #0b5fa5; }
+    .totals tr.grand td { font-weight: 800; font-size: 15px; color: #0b5fa5; }
+    .price-col { text-align: right; white-space: nowrap; }
+    .footer-note { margin-top: 28px; color: #6b7280; font-size: 11px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+    .btn-print { position: fixed; top: 16px; right: 16px; padding: 10px 22px; background: #0b5fa5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    @media print { .btn-print { display: none; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <button class="btn-print" onclick="window.print()">🖨 Печать / PDF</button>
+
+  <div class="doc-head">
+    <div class="doc-brand">
+      ❄ RACK CALCULATION
+      <small>Холодильные агрегаты · Расчет и подбор</small>
+    </div>
+    <div class="doc-num">
+      <h2>Коммерческое предложение</h2>
+      <p>№ <%= q.number %> от <%= q.created_at %></p>
+      <p>Клиент: <%= q.user_name %><%= q.company ? ' · ' + q.company : '' %></p>
+    </div>
+  </div>
+
+  <% const t = result.totals; const s = result.selection.totals; %>
+
+  <h3>1. Технические характеристики агрегата</h3>
+  <div class="two-col">
+    <div>
+      <table class="kv">
+        <tr><td>Хладагент</td><td><%= result.input.refrigerant %></td></tr>
+        <tr><td>Температура кипения</td><td><%= result.input.tEvap %> °C</td></tr>
+        <tr><td>Температура конденсации</td><td><%= result.input.tCond %> °C</td></tr>
+        <tr><td>Перегрев / переохлаждение</td><td><%= result.input.dTsh %> / <%= result.input.dTsc %> К</td></tr>
+      </table>
+    </div>
+    <div>
+      <table class="kv">
+        <tr><td>Холодопроизводительность</td><td><%= s.q_kw %> кВт</td></tr>
+        <tr><td>Потребляемая мощность</td><td><%= s.power_kw %> кВт</td></tr>
+        <tr><td>Теплопроизводительность</td><td><%= s.heat_kw %> кВт</td></tr>
+        <tr><td>COP</td><td><%= s.cop %></td></tr>
+        <tr><td>Массовый расход</td><td><%= s.mass_flow_kgh %> кг/ч</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h3>2. Компрессоры</h3>
+  <table>
+    <tr><th>Производитель</th><th>Модель</th><th>Кол-во</th><th>Q, кВт</th><th>N, кВт</th><th>I, А</th><th class="price-col">Цена, EUR</th></tr>
+    <% result.selection.items.forEach(c => { %>
+      <tr><td><%= c.manufacturer %></td><td><%= c.model %></td><td><%= c.qty %></td>
+          <td><%= c.q_kw %></td><td><%= c.power_kw %></td><td><%= c.current_a %></td>
+          <td class="price-col"><%= c.total_price_eur %></td></tr>
+    <% }) %>
+  </table>
+
+  <h3>3. Трубопроводы</h3>
+  <table>
+    <tr><th>Линия</th><th>Расход, кг/ч</th><th>Ø, дюймы</th><th>Труба, мм</th><th>Скорость, м/с</th></tr>
+    <% [['Всасывание','suction'],['Нагнетание','discharge'],['Жидкость','liquid']].forEach(([label, k]) => {
+         const p = result.piping.common[k]; const r = p.recommended; %>
+      <tr><td><%= label %></td><td><%= p.massFlowKgh %></td><td><%= r.size_in %></td>
+          <td>Ø<%= r.od_mm %>×<%= r.wall_mm %></td><td><%= r.v %></td></tr>
+    <% }) %>
+  </table>
+
+  <h3>4. Спецификация оборудования</h3>
+  <table>
+    <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th class="price-col">Цена, EUR</th><th class="price-col">Сумма, EUR</th></tr>
+    <% result.bom.forEach((it, i) => { %>
+      <tr><td><%= i+1 %></td><td><%= it.article %></td><td><%= it.name %></td><td><%= it.qty %></td>
+          <td class="price-col"><%= it.unit_price_eur %></td><td class="price-col"><%= it.total_price_eur %></td></tr>
+    <% }) %>
+  </table>
+
+  <table class="totals">
+    <tr><td>Материалы</td><td class="price-col"><%= t.materials_eur %> EUR</td></tr>
+    <tr><td>Мелочь (<%= t.petty_pct %>%)</td><td class="price-col"><%= t.petty_eur %> EUR</td></tr>
+    <tr><td>Работы (<%= t.labor_pct %>%)</td><td class="price-col"><%= t.labor_eur %> EUR</td></tr>
+    <tr><td>Профит (<%= t.profit_pct %>%)</td><td class="price-col"><%= t.profit_eur %> EUR</td></tr>
+    <tr class="total"><td>Итого без НДС</td><td class="price-col"><%= t.subtotal_eur %> EUR</td></tr>
+    <tr><td>Скидка клиента <%= t.discount_percent %>%</td><td class="price-col">−<%= t.discount_amount_eur %> EUR</td></tr>
+    <tr class="grand"><td>ВСЕГО</td><td class="price-col"><%= t.total_eur %> EUR</td></tr>
+  </table>
+
+  <div class="footer-note">
+    Цены указаны в EUR без НДС. Действительность предложения — 30 календарных дней с даты оформления.<br>
+    Технические характеристики соответствуют заявленному режиму работы. Производитель вправе вносить
+    конструктивные изменения без ухудшения характеристик.
+  </div>
+</body>
+</html>

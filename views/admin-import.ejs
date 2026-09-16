@@ -1,0 +1,49 @@
+<%- include('partials/header', { title: 'Импорт компрессоров из Excel' }) %>
+
+<h1>Импорт компрессоров из Excel</h1>
+
+<% if (message) { %><div class="alert alert-success"><%= message %></div><% } %>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (imported) { %>
+  <div class="alert alert-success">
+    ✅ Импорт завершен: загружено <%= imported.count %> моделей (производитель <%= imported.manufacturer %>),
+    пропущено строк: <%= imported.skipped %>.
+  </div>
+<% } %>
+
+<fieldset class="card">
+  <legend>Формат файла</legend>
+  <p class="hint">Файл должен соответствовать формату листов <b>Refcomp_polynom</b> / <b>Xecom_polynom</b> из «База данных.xlsx»:</p>
+  <ul class="hint" style="margin-left:20px; margin-bottom:10px">
+    <li>колонка 1 — модель; колонка 2 — частота; 3 — напряжение; 4 — хладагент; 5 — объемная производительность м³/ч</li>
+    <li>7 — диаметр всасывания; 8 — диаметр нагнетания; 9 — макс. ток; 11–14 — диапазоны t конд / t кип</li>
+    <li>колонки 15–24 — коэффициенты P_C1..P_C10 (мощность)</li>
+    <li>колонки 45–54 — коэффициенты M_C1..M_C10 (массовый расход, опционально)</li>
+    <li>колонки 55–64 — коэффициенты C_C1..C_C10 (холодопроизводительность) — <b>обязательно</b></li>
+    <li>колонка 65 — множитель (1000 для Вт; 1 если значения уже в кВт)</li>
+  </ul>
+</fieldset>
+
+<form method="POST" action="/admin/import" enctype="multipart/form-data" class="card">
+  <div class="form-row">
+    <div class="form-group">
+      <label>Производитель</label>
+      <select name="manufacturerId" required>
+        <% manufacturers.forEach(m => { %>
+          <option value="<%= m.id %>"><%= m.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Цена по умолчанию, EUR (если нет в файле)</label>
+      <input type="number" name="defaultPrice" value="1000" min="0">
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Файл Excel (.xlsx)</label>
+    <input type="file" name="file" accept=".xlsx,.xls" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Загрузить</button>
+</form>
+
+<%- include('partials/footer') %>

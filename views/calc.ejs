@@ -1,0 +1,284 @@
+<%- include('partials/header', { title: 'Расчет агрегата' }) %>
+
+<h1>Расчет холодильного агрегата</h1>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form method="POST" action="/calc" id="calcForm">
+  <div class="grid-2">
+    <!-- ===== Исходные данные ===== -->
+    <fieldset class="card">
+      <legend>1. Исходные данные</legend>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Хладагент *</label>
+          <select name="refrigerant" required>
+            <% refrigerants.forEach(r => { %>
+              <option value="<%= r.code %>" <%= form.refrigerant === r.code ? 'selected' : '' %>><%= r.code %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Требуемая мощность, кВт *</label>
+          <input type="number" name="requiredKw" step="0.1" min="0.1" required
+                 value="<%= form.requiredKw || '' %>">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Температура кипения, °C *</label>
+          <input type="number" name="tEvap" step="1" required value="<%= form.tEvap != null ? form.tEvap : -10 %>">
+        </div>
+        <div class="form-group">
+          <label>Температура конденсации, °C *</label>
+          <input type="number" name="tCond" step="1" required value="<%= form.tCond != null ? form.tCond : 45 %>">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Перегрев, К</label>
+          <input type="number" name="dTsh" step="1" value="<%= form.dTsh != null ? form.dTsh : 10 %>">
+        </div>
+        <div class="form-group">
+          <label>Переохлаждение, К</label>
+          <input type="number" name="dTsc" step="1" value="<%= form.dTsc != null ? form.dTsc : 0 %>">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Корпус</label>
+        <select name="housingCode">
+          <option value="">— не выбран —</option>
+          <% housings.forEach(h => { %>
+            <option value="<%= h.code %>" <%= form.housingCode === h.code ? 'selected' : '' %>><%= h.name %> (<%= h.price_eur %> EUR)</option>
+          <% }) %>
+        </select>
+      </div>
+    </fieldset>
+
+    <!-- ===== Компрессоры ===== -->
+    <fieldset class="card">
+      <legend>2. Компрессоры</legend>
+      <div class="form-group">
+        <label class="radio"><input type="radio" name="mode" value="auto" checked onchange="toggleMode()"> Автоподбор по мощности</label>
+        <label class="radio"><input type="radio" name="mode" value="manual" onchange="toggleMode()"> Ручной выбор</label>
+      </div>
+
+      <div id="autoBlock">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Тип</label>
+            <select name="autoType">
+              <option value="any">Любой</option>
+              <option value="scroll">Спиральный</option>
+              <option value="recip">Поршневой</option>
+              <option value="screw">Винтовой</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Производитель</label>
+            <select name="autoManufacturer">
+              <option value="any">Любой</option>
+              <% manufacturers.forEach(m => { %>
+                <option value="<%= m.id %>"><%= m.name %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Макс. количество компрессоров</label>
+          <select name="autoMaxQty">
+            <option>1</option><option>2</option><option selected>3</option><option>4</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="manualBlock" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Модель</label>
+            <select name="compressorId" id="compressorSelect"><option value="">— выберите хладагент —</option></select>
+          </div>
+          <div class="form-group">
+            <label>Количество</label>
+            <input type="number" name="compressorQty" value="1" min="1" max="6">
+          </div>
+        </div>
+      </div>
+    </fieldset>
+  </div>
+
+  <!-- ===== Опции ===== -->
+  <fieldset class="card">
+    <legend>3. Опции</legend>
+    <p class="hint">Обязательные опции включены автоматически. Опции, рекомендованные для выбранного режима, отмечены значком ★.</p>
+    <div class="options-grid">
+      <% options.forEach(o => { %>
+        <label class="option-item">
+          <input type="checkbox" name="options" value="<%= o.code %>"
+                 <%= o.mandatory ? 'checked disabled' : '' %>>
+          <%= o.name %>
+          <% if (o.mandatory) { %><span class="badge">обязательная</span><% } %>
+        </label>
+      <% }) %>
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary btn-lg">Рассчитать</button>
+  </div>
+</form>
+
+<% if (result) { %>
+  <!-- ==================== РЕЗУЛЬТАТ ==================== -->
+  <h2>Результаты расчета</h2>
+
+  <% if (result.warnings && result.warnings.length) { %>
+    <div class="alert alert-warn">
+      <% result.warnings.forEach(w => { %><div>★ <%= w %></div><% }) %>
+    </div>
+  <% } %>
+
+  <!-- Характеристики -->
+  <div class="grid-2">
+    <fieldset class="card">
+      <legend>Характеристики агрегата</legend>
+      <table class="kv">
+        <tr><td>Хладагент</td><td><b><%= result.input.refrigerant %></b></td></tr>
+        <tr><td>t кипения / t конденсации</td><td><%= result.input.tEvap %> / <%= result.input.tCond %> °C</td></tr>
+        <tr><td>Холодопроизводительность</td><td><b><%= result.selection.totals.q_kw %> кВт</b></td></tr>
+        <tr><td>Потребляемая мощность</td><td><%= result.selection.totals.power_kw %> кВт</td></tr>
+        <tr><td>Теплопроизводительность</td><td><%= result.selection.totals.heat_kw %> кВт</td></tr>
+        <tr><td>COP</td><td><%= result.selection.totals.cop %></td></tr>
+        <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
+        <tr><td>Суммарный ток</td><td><%= result.selection.totals.current_a %> А</td></tr>
+      </table>
+    </fieldset>
+
+    <fieldset class="card">
+      <legend>Свойства хладагента (точки цикла)</legend>
+      <table class="table">
+        <tr><th>Точка</th><th>t, °C</th><th>P, бар</th><th>ρ, кг/м³</th><th>h, кДж/кг</th></tr>
+        <% ['suction','discharge','liquid','throttle'].forEach(k => { const p = result.cycle[k]; %>
+          <tr><td><%= p.label %></td><td><%= p.t %></td><td><%= p.p %></td><td><%= p.rho %></td><td><%= p.h %></td></tr>
+        <% }) %>
+      </table>
+    </fieldset>
+  </div>
+
+  <!-- Компрессоры -->
+  <fieldset class="card">
+    <legend>Компрессоры</legend>
+    <table class="table">
+      <tr><th>Производитель</th><th>Модель</th><th>Кол-во</th><th>Q, кВт</th><th>N, кВт</th><th>I, А</th><th>ṁ, кг/ч</th><th>Цена, EUR</th></tr>
+      <% result.selection.items.forEach(c => { %>
+        <tr>
+          <td><%= c.manufacturer %></td><td><%= c.model %></td><td><%= c.qty %></td>
+          <td><%= c.q_kw %></td><td><%= c.power_kw %></td><td><%= c.current_a %></td>
+          <td><%= c.mass_flow_kgh %></td><td><%= c.total_price_eur %></td>
+        </tr>
+      <% }) %>
+    </table>
+  </fieldset>
+
+  <!-- Трубопроводы -->
+  <fieldset class="card">
+    <legend>Трубопроводы (магистральные)</legend>
+    <table class="table">
+      <tr><th>Линия</th><th>Расход, кг/ч</th><th>V̇, м³/ч</th><th>Рекоменд. Ø, "</th><th>Скорость, м/с</th><th>Допустимо</th></tr>
+      <% ['suction','discharge','liquid'].forEach(k => { const p = result.piping.common[k]; const r = p.recommended; %>
+        <tr>
+          <td><%= k === 'suction' ? 'Всасывание' : k === 'discharge' ? 'Нагнетание' : 'Жидкость' %></td>
+          <td><%= p.massFlowKgh %></td><td><%= p.vdot_m3h %></td>
+          <td><b><%= r.size_in %></b> (Ø<%= r.od_mm %>×<%= r.wall_mm %>)</td>
+          <td><%= r.v %></td>
+          <td><%= r.status === 'ok' ? '✓' : '⚠ вне диапазона' %></td>
+        </tr>
+      <% }) %>
+    </table>
+    <details>
+      <summary>Индивидуальные линии компрессоров</summary>
+      <% result.piping.individual.forEach(ind => { %>
+        <p><b><%= ind.label %></b>: всасывание <%= ind.suction.recommended.size_in %>" (<%= ind.suction.recommended.v %> м/с),
+           нагнетание <%= ind.discharge.recommended.size_in %>" (<%= ind.discharge.recommended.v %> м/с)</p>
+      <% }) %>
+    </details>
+  </fieldset>
+
+  <!-- Спецификация / BOM -->
+  <fieldset class="card">
+    <legend>Спецификация</legend>
+    <table class="table">
+      <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена, EUR</th><th>Сумма, EUR</th></tr>
+      <% result.bom.forEach((it, i) => { %>
+        <tr>
+          <td><%= i + 1 %></td><td><%= it.article %></td><td><%= it.name %></td>
+          <td><%= it.qty %></td><td><%= it.unit_price_eur %></td><td><%= it.total_price_eur %></td>
+        </tr>
+      <% }) %>
+    </table>
+  </fieldset>
+
+  <!-- Калькуляция -->
+  <fieldset class="card price-card">
+    <legend>Стоимость</legend>
+    <table class="kv">
+      <tr><td>Материалы</td><td><%= result.totals.materials_eur %> EUR</td></tr>
+      <tr><td>Мелочь (<%= result.totals.petty_pct %>%)</td><td><%= result.totals.petty_eur %> EUR</td></tr>
+      <tr><td>Работы (<%= result.totals.labor_pct %>%)</td><td><%= result.totals.labor_eur %> EUR</td></tr>
+      <tr><td>Профит (<%= result.totals.profit_pct %>%)</td><td><%= result.totals.profit_eur %> EUR</td></tr>
+      <tr class="total-row"><td>Итого без НДС</td><td><%= result.totals.subtotal_eur %> EUR</td></tr>
+      <% if (result.totals.discount_percent > 0) { %>
+        <tr><td>Скидка <%= result.totals.discount_percent %>%</td><td>−<%= result.totals.discount_amount_eur %> EUR</td></tr>
+      <% } %>
+      <tr class="grand-row"><td>ВСЕГО</td><td><%= result.totals.total_eur %> EUR</td></tr>
+    </table>
+  </fieldset>
+
+  <!-- Сохранение в КП -->
+  <form method="POST" action="/quotes/save" id="saveForm">
+    <% Object.entries({
+      refrigerant: result.input.refrigerant, tEvap: result.input.tEvap, tCond: result.input.tCond,
+      dTsh: result.input.dTsh, dTsc: result.input.dTsc, requiredKw: result.input.requiredKw,
+      housingCode: result.input.housingCode || '', mode: result.input.mode,
+      autoType: result.input.auto.type, autoManufacturer: result.input.auto.manufacturerId,
+      compressorId: result.input.manual.compressorId || '', compressorQty: result.input.manual.qty
+    }).forEach(([k, v]) => { %>
+      <input type="hidden" name="<%= k %>" value="<%= v %>">
+    <% }) %>
+    <% result.input.selectedOptions.forEach(o => { %>
+      <input type="hidden" name="options" value="<%= o %>">
+    <% }) %>
+    <div class="actions">
+      <button type="submit" class="btn btn-success btn-lg">💾 Сохранить как КП</button>
+    </div>
+  </form>
+<% } %>
+
+<script>
+function toggleMode() {
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  document.getElementById('autoBlock').style.display = mode === 'auto' ? '' : 'none';
+  document.getElementById('manualBlock').style.display = mode === 'manual' ? '' : 'none';
+  if (mode === 'manual') loadCompressors();
+}
+function loadCompressors() {
+  const ref = document.querySelector('select[name="refrigerant"]').value;
+  fetch('/calc/api/compressors?refrigerant=' + encodeURIComponent(ref))
+    .then(r => r.json())
+    .then(d => {
+      const sel = document.getElementById('compressorSelect');
+      sel.innerHTML = '';
+      d.compressors.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.manufacturer + ' ' + c.model + ' (' + c.price_eur + ' EUR)';
+        sel.appendChild(opt);
+      });
+    });
+}
+document.querySelector('select[name="refrigerant"]').addEventListener('change', () => {
+  if (document.querySelector('input[name="mode"]:checked').value === 'manual') loadCompressors();
+});
+</script>
+
+<%- include('partials/footer') %>

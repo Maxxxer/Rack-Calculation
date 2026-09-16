@@ -1,0 +1,29 @@
+{
+  "name": "rack-calculation",
+  "version": "1.0.0",
+  "description": "Веб-приложение для расчета холодильных агрегатов (rack calculation)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node db/seed.js",
+    "template": "node scripts/makeTemplate.js"
+  },
+  "keywords": [
+    "refrigeration",
+    "compressor",
+    "rack",
+    "calculation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-fileupload": "^1.5.2",
+    "express-session": "^1.18.0",
+    "telegraf": "^4.16.3",
+    "xlsx": "^0.18.5"
+  }
+}

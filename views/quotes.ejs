@@ -1,0 +1,33 @@
+<%- include('partials/header', { title: 'Коммерческие предложения' }) %>
+
+<h1>Коммерческие предложения</h1>
+
+<table class="table">
+  <tr>
+    <th>Номер</th><th>Клиент</th><th>Дата</th><th>Сумма, EUR</th><th>Скидка</th><th>Итого, EUR</th><th>Статус</th><th></th>
+  </tr>
+  <% quotes.forEach(q => { %>
+    <tr>
+      <td><%= q.number %></td>
+      <td><%= q.user_name %></td>
+      <td><%= q.created_at %></td>
+      <td><%= q.total_eur %></td>
+      <td><%= q.discount_percent %>%</td>
+      <td><b><%= q.total_after_discount_eur %></b></td>
+      <td>
+        <span class="status status-<%= q.status %>"><%= q.status %></span>
+      </td>
+      <td><a href="/quotes/<%= encodeURIComponent(q.number) %>" class="btn btn-primary btn-sm">Открыть</a></td>
+    </tr>
+  <% }) %>
+</table>
+
+<style>
+.status { padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; }
+.status-draft { background: #e5e7eb; color: #374151; }
+.status-sent { background: #dbeafe; color: #1e40af; }
+.status-approved { background: #d1fae5; color: #065f46; }
+.status-rejected { background: #fee2e2; color: #991b1b; }
+</style>
+
+<%- include('partials/footer') %>
