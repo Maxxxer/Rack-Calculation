@@ -43,6 +43,13 @@
   </table>
 </fieldset>
 
+<% if (result.vibration) { %>
+<fieldset class="card">
+  <legend>Виброгасители (индивидуально на каждый компрессор)</legend>
+  <%- include('partials/vibration-table', { vibration: result.vibration, isAdmin: true }) %>
+</fieldset>
+<% } %>
+
 <fieldset class="card">
   <legend>Калькуляция</legend>
   <table class="kv" style="max-width:480px">

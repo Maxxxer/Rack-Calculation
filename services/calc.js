@@ -13,6 +13,7 @@ const piping = require('./piping');
 const optionsSvc = require('./options');
 const pricing = require('./pricing');
 const refr = require('./refrigerants');
+const vibration = require('./vibration');
 const { db } = require('../db/database');
 
 // Фиксированные позиции спецификации (лист «Спецификация»)
@@ -71,17 +72,25 @@ function runCalculation(input, discountPercent = 0) {
     liquid: pipes.common.liquid.recommended.size_in
   };
 
-  // 4. Опции → BOM
+  // 4. Виброгасители: индивидуально на каждый компрессор,
+  //    раздельно для линии всасывания и линии нагнетания
+  const vibrationPlans = vibration.planAll({
+    compressors: sel.items, refrigerant, tEvap, tCond, dTsh, dTsc
+  });
+
+  // 5. Опции → BOM
   const ctx = {
-    refrigerant, tEvap, tCond,
+    refrigerant, tEvap, tCond, dTsh, dTsc,
     totalKw: sel.totals.q_kw,
     totalCompressors: sel.items.reduce((s, i) => s + i.qty, 0),
     compressorTypes: [...new Set(sel.items.map(i => i.type))],
-    pipeSizes
+    pipeSizes,
+    compressors: sel.items,
+    vibrationPlans
   };
   const opts = optionsSvc.resolveOptions(ctx, input.selectedOptions || []);
 
-  // 5. Корпус
+  // 6. Корпус
   let housing = null;
   if (housingCode) {
     housing = db.prepare("SELECT * FROM components WHERE category = 'housing' AND code = ?").get(housingCode);
@@ -93,7 +102,7 @@ function runCalculation(input, discountPercent = 0) {
     mandatory: true, auto: false, selected: true
   } : null;
 
-  // 6. Фиксированные позиции
+  // 7. Фиксированные позиции
   const fixedItems = FIXED_ITEMS.map(f => ({
     option_code: f.code, section: 'fixed',
     article: f.code, name: f.name, qty: 1,
@@ -101,7 +110,7 @@ function runCalculation(input, discountPercent = 0) {
     mandatory: true, auto: false, selected: true
   }));
 
-  // 7. Полная BOM
+  // 8. Полная BOM
   const bom = [
     ...sel.items.map(c => ({
       option_code: 'compressor', section: 'compressors',
@@ -115,10 +124,10 @@ function runCalculation(input, discountPercent = 0) {
   ];
   const materials = bom.reduce((s, i) => s + i.total_price_eur, 0);
 
-  // 8. Цены
+  // 9. Цены
   const totals = pricing.computeTotals(materials, discountPercent);
 
-  // 9. Свойства хладагента (4 точки цикла)
+  // 10. Свойства хладагента (4 точки цикла)
   const cycle = refr.cyclePoints(refrigerant, tEvap, tCond, dTsh, dTsc);
 
   return {
@@ -126,10 +135,11 @@ function runCalculation(input, discountPercent = 0) {
     cycle,
     selection: sel,
     piping: pipes,
+    vibration: vibrationPlans,
     options: opts,
     bom,
     totals,
-    warnings: opts.warnings
+    warnings: [...opts.warnings, ...vibrationPlans.warnings]
   };
 }
 

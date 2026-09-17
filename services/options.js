@@ -4,7 +4,10 @@
  * Структура повторяет лист «Спецификация» (Калькулятор Ultima_Prime_DB.xlsx):
  *  - фиксированные позиции (голова отжима, контроллер, шкаф, кондер, винты)
  *  - корпус, шумоизоляция
- *  - виброгасители, обратные клапаны после КМ (по диаметру линии)
+ *  - виброгасители — индивидуально на каждый компрессор, раздельно для линии
+ *    всасывания и линии нагнетания (размер по патрубку КМ, а при отсутствии
+ *    данных — по скорости хладагента и индивидуальной производительности)
+ *  - обратные клапаны после КМ (по диаметру магистрали нагнетания)
  *  - линия нагнетания: маслоотделитель, масляный ресивер, ЭРУМ
  *  - зимняя опция: KVR+NRD+NRV, клапан поддержания давления до себя,
  *    обратный клапан на сливе, обратный дифференциальный клапан
@@ -12,6 +15,13 @@
  *    вставка, смотровой глазок, шаровый кран
  *  - линия всасывания: отделитель жидкости, фильтр SDF, шаровый кран
  *  - доп. опции: сервисный кран, вентиль на нагнетании, реле уровня, соленоид
+ *
+ * sizing (см. db/optionDefinitions.js):
+ *  'pipe'                — подбор по диаметру линии, одна позиция на агрегат
+ *  'pipe_per_compressor' — подбор по диаметру линии, количество = число КМ
+ *  'per_compressor'      — подбор индивидуально по каждому компрессору
+ *  'capacity'            — подбор по холодопроизводительности
+ *  'none'                — фиксированная цена без компонента
  *
  * auto_rule — JSON:
  *  { "always": true, "max_tevap": -35, "min_tevap": 0, "min_compressors": 2,
@@ -21,6 +31,7 @@
 'use strict';
 
 const { db } = require('../db/database');
+const vibration = require('./vibration');
 
 /** Проверка правила автовключения */
 function ruleMatches(rule, ctx) {
@@ -94,9 +105,55 @@ function kvrFactor(tCond, refrigerant) {
 }
 
 /**
+ * План подбора виброгасителей для линии.
+ * Если расчёт уже выполнен оркестратором (ctx.vibrationPlans) — переиспользуем его,
+ * чтобы спецификация и таблица результатов совпадали.
+ */
+function resolveVibrationPlan(ctx, line) {
+  const cached = ctx.vibrationPlans && ctx.vibrationPlans[line];
+  if (cached) return cached;
+  return vibration.planLine({
+    kind: line,
+    compressors: ctx.compressors || [],
+    refrigerant: ctx.refrigerant,
+    tEvap: ctx.tEvap,
+    tCond: ctx.tCond,
+    dTsh: ctx.dTsh,
+    dTsc: ctx.dTsc
+  });
+}
+
+/** Позиции BOM по виброгасителям одной линии (по одному на каждый компрессор) */
+function vibrationItems(opt, ctx, flags) {
+  const plan = resolveVibrationPlan(ctx, opt.pipe_line);
+  return plan.bomItems.map(entry => ({
+    option_code: opt.code,
+    section: opt.section,
+    component_category: opt.component_category,
+    article: entry.article,
+    name: entry.name,
+    qty: entry.qty,
+    unit_price_eur: +entry.price_eur.toFixed(2),
+    total_price_eur: +(entry.price_eur * entry.qty).toFixed(2),
+    mandatory: flags.mandatory,
+    auto: flags.auto,
+    selected: flags.selected
+  }));
+}
+
+/** Подбор компонента для опций, размер которых определяется диаметром линии */
+function pipeSizedComponent(opt, ctx, scaleQty) {
+  const size = (ctx.pipeSizes && ctx.pipeSizes[opt.pipe_line]) || 0;
+  const component = pickComponent(opt.component_category, { sizeIn: size });
+  const qty = scaleQty ? Math.max(1, ctx.totalCompressors || 1) : 1;
+  return { component, qty };
+}
+
+/**
  * Разрешение опций в позиции BOM.
- * @param {Object} ctx { refrigerant, tEvap, tCond, totalKw, totalCompressors,
- *                        compressorTypes, pipeSizes: {suction, discharge, liquid} }
+ * @param {Object} ctx { refrigerant, tEvap, tCond, dTsh, dTsc, totalKw, totalCompressors,
+ *                        compressorTypes, pipeSizes: {suction, discharge, liquid},
+ *                        compressors: [позиции подбора], vibrationPlans }
  * @param {string[]} selectedCodes — коды, отмеченные пользователем
  * @returns {Object} { items, warnings }
  */
@@ -117,13 +174,21 @@ function resolveOptions(ctx, selectedCodes = []) {
       warnings.push(`«${opt.name}» рекомендована для выбранного режима — проверьте включение.`);
     }
 
+    // Виброгасители: подбор индивидуально по каждому компрессору,
+    // отдельно линия всасывания и линия нагнетания
+    if (opt.sizing === 'per_compressor') {
+      items.push(...vibrationItems(opt, ctx, { mandatory, auto, selected }));
+      continue;
+    }
+
     // Подбор компонента
     let component = null;
     let qty = 1;
     if (opt.component_category) {
       if (opt.sizing === 'pipe' && opt.pipe_line) {
-        const size = (ctx.pipeSizes && ctx.pipeSizes[opt.pipe_line]) || 0;
-        component = pickComponent(opt.component_category, { sizeIn: size });
+        ({ component, qty } = pipeSizedComponent(opt, ctx, false));
+      } else if (opt.sizing === 'pipe_per_compressor' && opt.pipe_line) {
+        ({ component, qty } = pipeSizedComponent(opt, ctx, true));
       } else if (opt.sizing === 'capacity') {
         let need = ctx.totalKw;
         if (opt.component_category === 'kvr_valve') {
@@ -138,11 +203,6 @@ function resolveOptions(ctx, selectedCodes = []) {
     const price = component ? component.price_eur : (opt.price_eur || 0);
     const code = component ? component.code : (opt.code.toUpperCase());
     const name = component ? `${opt.name} ${component.code}` : opt.name;
-
-    // Количество: виброгасители и обратные клапаны — по числу компрессоров
-    if (['vibration', 'check_valve'].includes(opt.component_category) && opt.sizing === 'pipe') {
-      qty = ctx.totalCompressors;
-    }
 
     items.push({
       option_code: opt.code, section: opt.section,

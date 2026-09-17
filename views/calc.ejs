@@ -241,6 +241,14 @@
     </details>
   </div>
 
+  <!-- Виброгасители -->
+  <% if (result.vibration) { %>
+    <div class="card">
+      <h3 class="card-title">Виброгасители (индивидуально на каждый компрессор)</h3>
+      <%- include('partials/vibration-table', { vibration: result.vibration, isAdmin }) %>
+    </div>
+  <% } %>
+
   <!-- Спецификация -->
   <div class="card">
     <h3 class="card-title">Спецификация</h3>

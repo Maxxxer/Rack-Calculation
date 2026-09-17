@@ -15,6 +15,7 @@
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
+const { OPTIONS } = require('./optionDefinitions');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -163,6 +164,35 @@ function initSchema() {
   `);
 }
 
-initSchema();
+/**
+ * Синхронизация справочника опций с определениями в коде (`db/optionDefinitions.js`).
+ * Нужна, чтобы правки правил подбора (например, раздельные виброгасители на
+ * всасывание и нагнетание, индивидуально по каждому компрессору) применялись
+ * к уже существующей базе данных без её пересоздания.
+ */
+function syncOptions() {
+  if (!OPTIONS.length) return;
+  const upsert = db.prepare(`
+    INSERT INTO options
+    (code, name, section, component_category, sizing, pipe_line, description, price_eur, auto_rule, mandatory, sort_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(code) DO UPDATE SET
+      name=excluded.name, section=excluded.section,
+      component_category=excluded.component_category, sizing=excluded.sizing,
+      pipe_line=excluded.pipe_line, description=excluded.description,
+      price_eur=excluded.price_eur, auto_rule=excluded.auto_rule,
+      mandatory=excluded.mandatory, sort_order=excluded.sort_order, active=1`);
+  for (const o of OPTIONS) {
+    upsert.run(o.code, o.name, o.section, o.component_category || null, o.sizing || 'none',
+      o.pipe_line || null, o.description || '', o.price_eur || 0, o.auto_rule || '',
+      o.mandatory || 0, o.sort_order || 0);
+  }
+  // Удаляем опции, которых больше нет в определениях (например, старая 'vibration')
+  const codes = OPTIONS.map(o => o.code);
+  db.prepare(`DELETE FROM options WHERE code NOT IN (${codes.map(() => '?').join(',')})`).run(...codes);
+}
 
-module.exports = { db, DB_PATH };
+initSchema();
+syncOptions();
+
+module.exports = { db, DB_PATH, syncOptions };

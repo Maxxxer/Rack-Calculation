@@ -31,6 +31,32 @@ function pipeArea(size) {
 }
 
 /**
+ * Средняя плотность среды в линии, кг/м³.
+ * @param {string} kind — suction | discharge | liquid
+ */
+function lineDensity(kind, { refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0 }) {
+  if (kind === 'suction') return refr.rhoSuction(refrigerant, tEvap, dTsh);
+  if (kind === 'discharge') {
+    const tDisch = refr.dischargeTemp(refrigerant, tEvap, tCond);
+    return refr.rhoDischarge(refrigerant, tCond, tDisch);
+  }
+  return refr.rhoLiquid(refrigerant, tCond - dTsc);
+}
+
+/**
+ * Скорость среды, м/с, в трубе заданного дюймового размера.
+ * Используется при индивидуальном подборе арматуры (виброгасители и т. п.).
+ */
+function velocityAt(sizeIn, kind, massFlowKgh, params) {
+  const area = pipeArea(sizeIn);
+  if (!area || !(massFlowKgh > 0)) return null;
+  const rho = lineDensity(kind, params);
+  if (!(rho > 0)) return null;
+  const vdot = (massFlowKgh / 3600) / rho; // м³/с
+  return +(vdot / area).toFixed(2);
+}
+
+/**
  * Расчет одной линии.
  * @param {string} kind — suction | discharge | liquid
  * @param {number} massFlowKgh — массовый расход, кг/ч
@@ -38,15 +64,7 @@ function pipeArea(size) {
  */
 function calcLine({ kind, refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0, massFlowKgh, minSizeIn = 0 }) {
   const mdot = massFlowKgh / 3600; // кг/с
-  let rho;
-  if (kind === 'suction') {
-    rho = refr.rhoSuction(refrigerant, tEvap, dTsh);
-  } else if (kind === 'discharge') {
-    const tDisch = refr.dischargeTemp(refrigerant, tEvap, tCond);
-    rho = refr.rhoDischarge(refrigerant, tCond, tDisch);
-  } else {
-    rho = refr.rhoLiquid(refrigerant, tCond - dTsc);
-  }
+  const rho = lineDensity(kind, { refrigerant, tEvap, tCond, dTsh, dTsc });
 
   const Vdot = mdot / rho; // м³/с
   const vRec = V_RECOMMEND[kind];
@@ -115,4 +133,7 @@ function calcPiping({ refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0, items }) {
   return { individual, common, totalMassFlowKgh: +totalMass.toFixed(1) };
 }
 
-module.exports = { calcLine, calcPiping, V_RECOMMEND, V_RANGE, getPipeSizes, pipeArea };
+module.exports = {
+  calcLine, calcPiping, getPipeSizes, pipeArea,
+  lineDensity, velocityAt, V_RECOMMEND, V_RANGE
+};
