@@ -40,10 +40,12 @@ router.post('/', (req, res) => {
       mode: b.mode === 'manual' ? 'manual' : 'auto',
       auto: {
         type: b.autoType || 'any',
-        manufacturerId: b.autoManufacturer ? parseInt(b.autoManufacturer, 10) : 'any',
+        manufacturerId: b.autoManufacturer || 'any',
         maxQty: b.autoMaxQty ? parseInt(b.autoMaxQty, 10) : 3
       },
       manual: {
+        type: b.manualType || 'any',
+        manufacturerId: b.manualManufacturer || 'any',
         compressorId: b.compressorId ? parseInt(b.compressorId, 10) : null,
         qty: b.compressorQty ? parseInt(b.compressorQty, 10) : 1
       },
@@ -84,14 +86,18 @@ router.post('/api/variants', (req, res) => {
   }
 });
 
-// API: список компрессоров для ручного выбора
+// API: список компрессоров для ручного выбора (с фильтром по типу и производителю)
 router.get('/api/compressors', (req, res) => {
-  const { refrigerant } = req.query;
-  const rows = db.prepare(`
+  const { refrigerant, type, manufacturer } = req.query;
+  let sql = `
     SELECT c.id, c.model, c.type, c.refrigerant_code, c.price_eur, m.name AS manufacturer
     FROM compressors c JOIN manufacturers m ON m.id = c.manufacturer_id
-    WHERE c.active = 1 AND LOWER(c.refrigerant_code) = LOWER(?)
-    ORDER BY m.name, c.model`).all(refrigerant || '');
+    WHERE c.active = 1 AND LOWER(c.refrigerant_code) = LOWER(?)`;
+  const args = [refrigerant || ''];
+  if (type && type !== 'any') { sql += ' AND c.type = ?'; args.push(type); }
+  if (manufacturer && manufacturer !== 'any') { sql += ' AND c.manufacturer_id = ?'; args.push(manufacturer); }
+  sql += ' ORDER BY m.name, c.model';
+  const rows = db.prepare(sql).all(...args);
   res.json({ compressors: rows });
 });
 

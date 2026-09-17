@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title : 'Rack Calculation' %></title>
+  <title><%= typeof title !== 'undefined' ? title : 'Подбор холодильного агрегата' %></title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <nav class="topnav">
-    <div class="brand">❄ Rack Calculation</div>
+    <a class="brand" href="/calc" title="Перейти к подбору оборудования">
+      <img src="/assets/logo-mair.svg" alt="MAIR" class="brand-logo">
+      <span class="brand-text">Подбор холодильного агрегата</span>
+    </a>
     <% if (user) { %>
       <div class="nav-links">
-        <a href="/calc">Расчет</a>
+        <a href="/calc">Подбор</a>
         <a href="/quotes">Мои КП</a>
         <% if (user.role === 'admin') { %>
           <a href="/admin/users">Пользователи</a>
           <a href="/admin/import">Импорт Excel</a>
           <a href="/admin/catalog">Каталог</a>
         <% } %>
-        <span class="user-info"><%= user.name %><% if (user.discount_percent > 0) { %> (скидка <%= user.discount_percent %>%)<% } %></span>
+        <span class="user-info"><%= user.name %></span>
         <form method="POST" action="/logout" class="inline-form"><button type="submit" class="btn-link">Выход</button></form>
       </div>
     <% } %>

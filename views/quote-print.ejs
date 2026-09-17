@@ -33,10 +33,13 @@
 <body>
   <button class="btn-print" onclick="window.print()">🖨 Печать / PDF</button>
 
+  <% const isAdmin = user && user.role === 'admin'; %>
+  <% const t = result.totals; const s = result.selection.totals; %>
+
   <div class="doc-head">
     <div class="doc-brand">
-      ❄ RACK CALCULATION
-      <small>Холодильные агрегаты · Расчет и подбор</small>
+      MAIR
+      <small>Подбор холодильного агрегата</small>
     </div>
     <div class="doc-num">
       <h2>Коммерческое предложение</h2>
@@ -44,8 +47,6 @@
       <p>Клиент: <%= q.user_name %><%= q.company ? ' · ' + q.company : '' %></p>
     </div>
   </div>
-
-  <% const t = result.totals; const s = result.selection.totals; %>
 
   <h3>1. Технические характеристики агрегата</h3>
   <div class="two-col">
@@ -70,11 +71,12 @@
 
   <h3>2. Компрессоры</h3>
   <table>
-    <tr><th>Производитель</th><th>Модель</th><th>Кол-во</th><th>Q, кВт</th><th>N, кВт</th><th>I, А</th><th class="price-col">Цена, EUR</th></tr>
+    <tr><th>Производитель</th><th>Модель</th><th>Тип</th><th>Кол-во</th><th>Q, кВт</th><th>N, кВт</th><th>I, А</th></tr>
     <% result.selection.items.forEach(c => { %>
-      <tr><td><%= c.manufacturer %></td><td><%= c.model %></td><td><%= c.qty %></td>
-          <td><%= c.q_kw %></td><td><%= c.power_kw %></td><td><%= c.current_a %></td>
-          <td class="price-col"><%= c.total_price_eur %></td></tr>
+      <tr><td><%= c.manufacturer %></td><td><%= c.model %></td>
+          <td><%= c.type === 'scroll' ? 'Спиральный' : c.type === 'screw' ? 'Винтовой' : 'Поршневой' %></td>
+          <td><%= c.qty %></td>
+          <td><%= c.q_kw %></td><td><%= c.power_kw %></td><td><%= c.current_a %></td></tr>
     <% }) %>
   </table>
 
@@ -90,22 +92,31 @@
 
   <h3>4. Спецификация оборудования</h3>
   <table>
-    <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th class="price-col">Цена, EUR</th><th class="price-col">Сумма, EUR</th></tr>
+    <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th>
+      <% if (isAdmin) { %><th class="price-col">Цена, EUR</th><th class="price-col">Сумма, EUR</th><% } %>
+    </tr>
     <% result.bom.forEach((it, i) => { %>
       <tr><td><%= i+1 %></td><td><%= it.article %></td><td><%= it.name %></td><td><%= it.qty %></td>
-          <td class="price-col"><%= it.unit_price_eur %></td><td class="price-col"><%= it.total_price_eur %></td></tr>
+          <% if (isAdmin) { %><td class="price-col"><%= it.unit_price_eur %></td><td class="price-col"><%= it.total_price_eur %></td><% } %>
+      </tr>
     <% }) %>
   </table>
 
-  <table class="totals">
-    <tr><td>Материалы</td><td class="price-col"><%= t.materials_eur %> EUR</td></tr>
-    <tr><td>Мелочь (<%= t.petty_pct %>%)</td><td class="price-col"><%= t.petty_eur %> EUR</td></tr>
-    <tr><td>Работы (<%= t.labor_pct %>%)</td><td class="price-col"><%= t.labor_eur %> EUR</td></tr>
-    <tr><td>Профит (<%= t.profit_pct %>%)</td><td class="price-col"><%= t.profit_eur %> EUR</td></tr>
-    <tr class="total"><td>Итого без НДС</td><td class="price-col"><%= t.subtotal_eur %> EUR</td></tr>
-    <tr><td>Скидка клиента <%= t.discount_percent %>%</td><td class="price-col">−<%= t.discount_amount_eur %> EUR</td></tr>
-    <tr class="grand"><td>ВСЕГО</td><td class="price-col"><%= t.total_eur %> EUR</td></tr>
-  </table>
+  <% if (isAdmin) { %>
+    <table class="totals">
+      <tr><td>Материалы</td><td class="price-col"><%= t.materials_eur %> EUR</td></tr>
+      <tr><td>Мелочь (<%= t.petty_pct %>%)</td><td class="price-col"><%= t.petty_eur %> EUR</td></tr>
+      <tr><td>Работы (<%= t.labor_pct %>%)</td><td class="price-col"><%= t.labor_eur %> EUR</td></tr>
+      <tr><td>Профит (<%= t.profit_pct %>%)</td><td class="price-col"><%= t.profit_eur %> EUR</td></tr>
+      <tr class="total"><td>Итого без НДС</td><td class="price-col"><%= t.subtotal_eur %> EUR</td></tr>
+      <tr><td>Скидка клиента <%= t.discount_percent %>%</td><td class="price-col">−<%= t.discount_amount_eur %> EUR</td></tr>
+      <tr class="grand"><td>ВСЕГО</td><td class="price-col"><%= t.total_eur %> EUR</td></tr>
+    </table>
+  <% } else { %>
+    <table class="totals">
+      <tr class="grand"><td>Цена агрегата (без НДС)</td><td class="price-col"><%= t.total_eur %> EUR</td></tr>
+    </table>
+  <% } %>
 
   <div class="footer-note">
     Цены указаны в EUR без НДС. Действительность предложения — 30 календарных дней с даты оформления.<br>

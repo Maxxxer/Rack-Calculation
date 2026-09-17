@@ -14,6 +14,7 @@
 const bcrypt = require('bcryptjs');
 const { db } = require('./database');
 const refr = require('../services/refrigerants');
+const polyfit = require('../services/polyfit');
 
 // ================= ХЛАДАГЕНТЫ =================
 function seedRefrigerants() {
@@ -116,18 +117,93 @@ function seedManufacturers() {
   for (const m of MANUFACTURERS) ins.run(m[0], m[1]);
 }
 
-function seedCompressors() {
+/**
+ * Определение типа компрессора по производителю и модели
+ * (по данным производителей, открытые каталоги):
+ *  - Refcomp серии SP (SP4H/SP6H/SP4L/SP6L) и SPC — полугерметичные
+ *    ПОРШНЕВЫЕ компрессоры (SP = Semi-hermetic Piston) → recip
+ *  - Xecom XR / XFV — СПИРАЛЬНЫЕ (scroll)
+ *  - Bitzer серия CSH/CSW и др. винтовые — при импорте задаётся отдельно
+ */
+function typeFromModel(mfr, model) {
+  if (/refcomp/i.test(mfr)) return 'recip';   // SP/SPC — полугерметичные поршневые
+  return 'scroll';                             // Xecom XR/XFV — спиральные
+}
+
+// Модели производителей, для которых коэффициенты генерируются физической
+// моделью (polyfit) — винтовые/спиральные/поршневые.
+// [производитель, модель, тип, хладагент, Vh м³/ч, dSuction_in, dDisch_in, Imax,
+//  minTevap, maxTevap, minTcond, maxTcond, цена EUR]
+const GENERATED_COMPRESSORS = [
+  // Bitzer — полугерметичные ВИНТОВЫЕ (серия CSH, R404a/R507a)
+  ['Bitzer_EU', 'CSH7551-90', 'screw', 'R404a', 90, 2.125, 1.375, 110, -40, 5, 20, 55, 12500],
+  ['Bitzer_EU', 'CSH7561-110', 'screw', 'R404a', 110, 2.125, 1.375, 130, -40, 5, 20, 55, 14800],
+  ['Bitzer_EU', 'CSH7571-125', 'screw', 'R404a', 125, 2.625, 1.625, 150, -40, 5, 20, 55, 16500],
+  ['Bitzer_EU', 'CSH8571-140', 'screw', 'R404a', 140, 2.625, 1.625, 170, -40, 5, 20, 55, 18900],
+  // Bitzer — полугерметичные ПОРШНЕВЫЕ (серия 4F/4H, R404a)
+  ['Bitzer_EU', '4FE-25', 'recip', 'R404a', 25.3, 1.375, 1.125, 32, -40, 10, 20, 55, 3400],
+  ['Bitzer_EU', '4HE-25', 'recip', 'R404a', 25.3, 1.625, 1.375, 38, -40, 10, 20, 55, 4100],
+  ['Bitzer_EU', '4GE-30', 'recip', 'R404a', 30.2, 1.625, 1.375, 44, -40, 10, 20, 55, 4800],
+  // Copeland — СПИРАЛЬНЫЕ (серия ZB, R404a)
+  ['Copeland', 'ZB38KQE', 'scroll', 'R404a', 11.4, 0.875, 0.625, 16, -30, 10, 10, 60, 980],
+  ['Copeland', 'ZB58KQE', 'scroll', 'R404a', 17.2, 1.125, 0.875, 24, -30, 10, 10, 60, 1350],
+  ['Copeland', 'ZB76KQE', 'scroll', 'R404a', 22.1, 1.125, 0.875, 30, -30, 10, 10, 60, 1680],
+  ['Copeland', 'ZB114KQE', 'scroll', 'R404a', 33.6, 1.375, 1.125, 44, -30, 10, 10, 60, 2350],
+  // Ridan — СПИРАЛЬНЫЕ и ПОРШНЕВЫЕ (R404a)
+  ['Ridan_Scroll', 'RS-30', 'scroll', 'R404a', 14.5, 1.125, 0.875, 20, -35, 10, 10, 60, 890],
+  ['Ridan_Scroll', 'RS-50', 'scroll', 'R404a', 24.0, 1.125, 0.875, 32, -35, 10, 10, 60, 1240],
+  ['Ridan_Piston', 'RP-20', 'recip', 'R404a', 20.0, 1.375, 1.125, 28, -40, 10, 20, 55, 2100],
+  ['Ridan_Piston', 'RP-35', 'recip', 'R404a', 35.0, 1.625, 1.375, 46, -40, 10, 20, 55, 2950],
+  ['Invotech', 'IV-S40', 'scroll', 'R404a', 18.0, 1.125, 0.875, 24, -35, 10, 10, 60, 1120],
+  ['Invotech', 'IV-V90', 'screw', 'R404a', 90, 2.125, 1.375, 108, -40, 5, 20, 55, 11800]
+];
+
+function seedGeneratedCompressors() {
   const ins = db.prepare(`
-    INSERT OR IGNORE INTO compressors
+    INSERT INTO compressors
     (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
      displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
      min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
      poly_capacity, poly_power, poly_mass, poly_multiplier)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-  for (const c of COMPRESSORS) {
-    const [mfr, model, type, ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price, pCap, pPow, pMas] = c;
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(manufacturer_id, model, refrigerant_code) DO UPDATE SET
+      type=excluded.type, price_eur=excluded.price_eur,
+      poly_capacity=excluded.poly_capacity, poly_power=excluded.poly_power,
+      poly_multiplier=excluded.poly_multiplier, active=1`);
+  for (const c of GENERATED_COMPRESSORS) {
+    const [mfr, model, type, ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price] = c;
     const m = db.prepare('SELECT id FROM manufacturers WHERE name = ?').get(mfr);
     if (!m) continue;
+    const coeffs = polyfit.generatePolyCoeffs({ type, refrigerant: ref, displacement: vh });
+    ins.run(m.id, model, type, ref, 50, 400, vh, dS, dD, imax,
+      teMin, teMax, tcMin, tcMax, price,
+      JSON.stringify(coeffs.polyCapacity), JSON.stringify(coeffs.polyPower),
+      null, 1);
+  }
+}
+
+function seedCompressors() {
+  const ins = db.prepare(`
+    INSERT INTO compressors
+    (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
+     displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
+     min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
+     poly_capacity, poly_power, poly_mass, poly_multiplier)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(manufacturer_id, model, refrigerant_code) DO UPDATE SET
+      type=excluded.type, displacement_m3h=excluded.displacement_m3h,
+      suction_d_in=excluded.suction_d_in, discharge_d_in=excluded.discharge_d_in,
+      max_current_a=excluded.max_current_a, min_tevap=excluded.min_tevap,
+      max_tevap=excluded.max_tevap, min_tcond=excluded.min_tcond,
+      max_tcond=excluded.max_tcond, price_eur=excluded.price_eur,
+      poly_capacity=excluded.poly_capacity, poly_power=excluded.poly_power,
+      poly_mass=excluded.poly_mass, poly_multiplier=excluded.poly_multiplier, active=1`);
+  for (const c of COMPRESSORS) {
+    // формат данных: [производитель, модель, тип(игнор.), хладагент, Vh, ...]
+    const [mfr, model, , ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price, pCap, pPow, pMas] = c;
+    const m = db.prepare('SELECT id FROM manufacturers WHERE name = ?').get(mfr);
+    if (!m) continue;
+    const type = typeFromModel(mfr, model);
     // Refcomp: полиномы в кВт (mult=1); Xecom: в Вт/кг/ч (mult=1000)
     const mult = mfr === 'Refcomp' ? 1 : 1000;
     ins.run(m.id, model, type, ref, 50, 400, vh, dS, dD, imax,
@@ -404,6 +480,7 @@ function run() {
   seedRefrigerants();
   seedManufacturers();
   seedCompressors();
+  seedGeneratedCompressors();
   seedPipeSizes();
   seedComponents();
   seedOptions();
