@@ -14,6 +14,13 @@
  *   'per_compressor'       — подбор индивидуально по каждому компрессору
  *                            (виброгасители: размер по патрубку КМ, иначе по скорости)
  *   'capacity'             — подбор по холодопроизводительности
+ *
+ * mandatory:
+ *   1 — позиция входит в агрегат всегда: она не показывается чекбоксом в окне
+ *       «Опции», а перечисляется в окне «Стандартная комплектация»
+ *   0 — обычная опция: пользователь отмечает её сам
+ * Если у опции задано правило auto_rule, позиция добавляется в спецификацию
+ * автоматически, когда режим работы подходит под правило.
  */
 'use strict';
 
@@ -27,11 +34,11 @@ const OPTIONS = [
   { code: 'vibration_suction', name: 'Виброгаситель на всасывании (на каждый КМ)',
     section: 'compressors', component_category: 'vibration', sizing: 'per_compressor', pipe_line: 'suction',
     description: 'Размер по патрубку всасывания компрессора; при отсутствии данных — по скорости хладагента и производительности',
-    auto_rule: '{"always":true}', mandatory: 1, sort_order: 10 },
+    auto_rule: '', sort_order: 10 },
   { code: 'vibration_discharge', name: 'Виброгаситель на нагнетании (на каждый КМ)',
     section: 'compressors', component_category: 'vibration', sizing: 'per_compressor', pipe_line: 'discharge',
     description: 'Размер по патрубку нагнетания компрессора; при отсутствии данных — по скорости хладагента и производительности',
-    auto_rule: '{"always":true}', mandatory: 1, sort_order: 11 },
+    auto_rule: '', sort_order: 11 },
 
   { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compressors',
     component_category: null, sizing: 'none', price_eur: 180,
@@ -83,7 +90,7 @@ const OPTIONS = [
     sizing: 'capacity', auto_rule: '{"max_tevap":-20}', sort_order: 50 },
   { code: 'suction_filter', name: 'Фильтр разборный с грязевой вставкой', section: 'suction',
     component_category: 'suction_filter', sizing: 'pipe', pipe_line: 'suction',
-    auto_rule: '{"always":true}', mandatory: 1, sort_order: 51 },
+    auto_rule: '', sort_order: 51 },
   { code: 'suction_ball_valve', name: 'Шаровый кран', section: 'suction', component_category: 'ball_valve',
     sizing: 'pipe', pipe_line: 'suction', auto_rule: '{"always":true}', mandatory: 1, sort_order: 52 },
   { code: 'service_valve', name: 'Шаровый кран перед обратным клапаном ресиверной станции (сервис)',

@@ -221,9 +221,9 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--sp-5);
-  padding-bottom: var(--sp-5);
+  padding-bottom: var(--sp-4);
   border-bottom: 2px solid var(--accent);
-  margin-bottom: var(--sp-7);
+  margin-bottom: var(--sp-5);
 }
 
 .page-head__main {
@@ -232,6 +232,11 @@
 
 .page-head h1 {
   margin-top: var(--sp-3);
+}
+
+/* Кикер стоит не над заголовком, а справа на его уровне (калькулятор) */
+.page-head--inline h1 {
+  margin-top: 0;
 }
 
 .page-head__lead {
@@ -349,8 +354,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3) var(--sp-4);
-  margin-top: var(--sp-6);
-  padding: var(--sp-4) 0;
+  margin-top: var(--sp-5);
+  padding: var(--sp-3) 0;
   /* Непрозрачный фон: полупрозрачный градиент оставлял просвечивающие
      подписи полей под кнопкой. Волосяная линия отделяет панель от контента. */
   background: var(--bg);

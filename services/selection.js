@@ -78,31 +78,65 @@ function findCompressors({ refrigerant, type, manufacturerId, tEvap }) {
   return db.prepare(sql).all(...args);
 }
 
+/** Допуск попадания в требуемую мощность по умолчанию, % */
+const DEFAULT_TOLERANCE_PCT = 10;
+
+/** Минимальная суммарная мощность, % от требуемой (ниже — вариант не рассматривается) */
+const MIN_CAPACITY_PCT = 98;
+
+/** Максимальный избыток мощности, % (выше — вариант не рассматривается) */
+const MAX_OVERSIZE_PCT = 60;
+
+/** Допуск приводим к числу в диапазоне 0…100 %; пустое значение — допуск по умолчанию */
+function normalizeTolerancePct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_TOLERANCE_PCT;
+  return Math.min(Math.max(n, 0), 100);
+}
+
 /**
  * Автоподбор: перебор моделей и количества 1..maxQty.
- * Критерий: суммарная мощность >= требуемой, минимальный избыток, затем цена.
+ *
+ * Варианты, попавшие в допуск по мощности (требуемая ±tolerancePct %), идут
+ * первыми — из них выбирается ближайший к требуемой мощности, затем самый
+ * дешёвый. Если в допуск не попал никто, дальше идут остальные варианты,
+ * тоже по близости к требуемой мощности: подбор всегда что-то предложит.
  */
-function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerId, maxQty = 3, topN = 5 }) {
+function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerId,
+                      maxQty = 3, topN = 5, tolerancePct = DEFAULT_TOLERANCE_PCT }) {
+  const tol = normalizeTolerancePct(tolerancePct) / 100;
+  const minKw = requiredKw * (1 - tol);
+  const maxKw = requiredKw * (1 + tol);
+
   const candidates = findCompressors({ refrigerant, type, manufacturerId, tEvap });
-  const variants = [];
+  const inTolerance = [];
+  const outside = [];
   for (const c of candidates) {
     const perf = compressorPerformance(c, tEvap, tCond);
     if (!perf || !perf.q_kw || perf.q_kw <= 0) continue;
     for (let qty = 1; qty <= maxQty; qty++) {
       const total = perf.q_kw * qty;
-      if (total < requiredKw * 0.98) continue;
+      if (total < requiredKw * (MIN_CAPACITY_PCT / 100)) continue;
       const oversize = (total / requiredKw - 1) * 100;
-      if (oversize > 60) continue;
-      variants.push({
+      if (oversize > MAX_OVERSIZE_PCT) continue;
+      const withinTolerance = total >= minKw && total <= maxKw;
+      const variant = {
         compressor: c, perf, qty,
-        totalKw: total, oversizePct: oversize,
+        totalKw: total, oversizePct: oversize, withinTolerance,
         priceEur: c.price_eur * qty,
         powerKw: (perf.power_kw || 0) * qty
-      });
+      };
+      (withinTolerance ? inTolerance : outside).push(variant);
     }
   }
-  variants.sort((a, b) => (a.oversizePct - b.oversizePct) || (a.priceEur - b.priceEur));
-  return variants.slice(0, topN);
+
+  // Близость к требуемой мощности важнее цены: сначала отклонение, потом цена
+  const byDeviation = (a, b) =>
+    (Math.abs(a.oversizePct) - Math.abs(b.oversizePct)) || (a.priceEur - b.priceEur);
+  inTolerance.sort(byDeviation);
+  outside.sort(byDeviation);
+
+  return [...inTolerance, ...outside].slice(0, topN);
 }
 
 /**
@@ -152,4 +186,7 @@ function evaluateSelection({ refrigerant, tEvap, tCond, items }) {
   };
 }
 
-module.exports = { evalPoly, compressorPerformance, findCompressors, autoSelect, evaluateSelection };
+module.exports = {
+  evalPoly, compressorPerformance, findCompressors, autoSelect, evaluateSelection,
+  normalizeTolerancePct, DEFAULT_TOLERANCE_PCT
+};

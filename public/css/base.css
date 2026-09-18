@@ -134,13 +134,13 @@ hr {
   width: 100%;
   max-width: var(--shell-max);
   margin: 0 auto;
-  padding: var(--sp-7) var(--gutter) var(--sp-9);
+  padding: var(--sp-5) var(--gutter) var(--sp-8);
   flex: 1 0 auto;
 }
 
 /* -- Вертикальный поток -------------------------------------------------- */
 .stack > * + * {
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-5);
 }
 
 .stack-sm > * + * {

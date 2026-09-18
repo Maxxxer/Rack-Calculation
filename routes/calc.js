@@ -7,7 +7,7 @@
 const express = require('express');
 const { db } = require('../db/database');
 const { runCalculation } = require('../services/calc');
-const { autoSelect } = require('../services/selection');
+const { autoSelect, normalizeTolerancePct } = require('../services/selection');
 
 const router = express.Router();
 
@@ -36,6 +36,7 @@ router.post('/', (req, res) => {
       dTsh: parseFloat(b.dTsh) || 10,
       dTsc: parseFloat(b.dTsc) || 0,
       requiredKw: parseFloat(b.requiredKw) || 0,
+      tolerancePct: normalizeTolerancePct(b.tolerancePct),
       housingCode: b.housingCode || null,
       mode: b.mode === 'manual' ? 'manual' : 'auto',
       auto: {
@@ -68,6 +69,7 @@ router.post('/api/variants', (req, res) => {
       type: type || 'any',
       manufacturerId: manufacturerId || 'any',
       maxQty: parseInt(maxQty, 10) || 3,
+      tolerancePct: normalizeTolerancePct(req.body.tolerancePct),
       topN: 5
     });
     res.json({

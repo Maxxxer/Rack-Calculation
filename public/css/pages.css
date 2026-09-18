@@ -86,14 +86,100 @@
   }
 }
 
+/* ============================================================================
+   Форма калькулятора
+   На широком экране окна встают парами: 01 «Режим работы» и 02 «Компрессоры»,
+   под ними 03 «Опции» и 04 «Стандартная комплектация». Панель действий
+   занимает всю ширину.
+   ========================================================================== */
+.calc-form {
+  display: grid;
+  gap: var(--sp-5);
+}
+
+/* .stack задаёт отступы между детьми — в сетке их заменяет gap */
+.calc-form > * + * {
+  margin-top: 0;
+}
+
+.calc-form > .action-bar {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 900px) {
+  .calc-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  /* Число столбцов внутри поля определяет доступная ширина панели, а не
+     ширина окна: в половинной колонке фиксированные 2–3 столбца не
+     помещались и поля сжимались до нечитаемых. */
+  .calc-form .field-grid,
+  .calc-form .field-grid--3 {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--sp-3) var(--sp-4);
+  }
+}
+
 /* Блок выбора режима: авто / ручной. Скрытый — .is-hidden */
 .mode-block {
-  padding-top: var(--sp-5);
+  padding-top: var(--sp-4);
   border-top: 1px solid var(--border-soft);
 }
 
 .mode-block > * + * {
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
+}
+
+/* ============================================================================
+   Опции и стандартная комплектация
+   В форме калькулятора окна стоят рядом: выбираемые опции слева,
+   неизменный базовый состав справа.
+   ========================================================================== */
+.calc-form .options-grid {
+  /* Число столбцов задаёт ширина панели, а не окна: в половинной колонке
+     прежние 2–3 столбца сжимали подписи опций в узкие полоски. */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* Базовый состав — построчный список: наименование, артикул, количество */
+.std-list {
+  display: grid;
+}
+
+.std-list__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--sp-3);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.std-list__item:last-child {
+  border-bottom: 0;
+}
+
+.std-list__name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.std-list__article {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.std-list__qty {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
 }
 
 /* Индивидуальные линии компрессоров внутри раскрывающегося блока */

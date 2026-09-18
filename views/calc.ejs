@@ -16,6 +16,23 @@
   const selOpts = Array.isArray(f.selectedOptions) ? f.selectedOptions
                 : (f.options ? (Array.isArray(f.options) ? f.options : [f.options]) : []);
 
+  // Окно «Опции» — только выбираемые позиции. Обязательные выведены
+  // отдельным окном «Стандартная комплектация» справа.
+  const selectableOptions = options.filter(o => !o.mandatory);
+  const standardOptions = options.filter(o => o.mandatory);
+
+  // Артикулы стандартных позиций известны только после расчёта.
+  const standardArticles = new Map();
+  if (result) {
+    result.bom.forEach(i => {
+      if (!standardArticles.has(i.option_code)) standardArticles.set(i.option_code, i);
+    });
+  }
+
+  // Таблицу виброгасителей показываем, только если они вошли в спецификацию.
+  const VIBRATION_CODES = ['vibration_suction', 'vibration_discharge'];
+  const vibrationInBom = !!result && result.bom.some(i => VIBRATION_CODES.includes(i.option_code));
+
   const COMPRESSOR_TYPES = [
     { value: 'any', label: 'Любой' },
     { value: 'scroll', label: 'Спиральный' },
@@ -31,14 +48,12 @@
   ];
 %>
 
-<div class="page-head">
+<div class="page-head page-head--inline">
   <div class="page-head__main">
-    <span class="kicker">Подбор оборудования</span>
     <h1>Холодильный агрегат</h1>
-    <p class="page-head__lead">
-      Задайте режим работы и требуемую мощность — сервис подберёт компрессоры по полиномам
-      AHRI/EN12900, рассчитает трубопроводы, виброгасители и соберёт спецификацию.
-    </p>
+  </div>
+  <div class="page-head__aside">
+    <span class="kicker">Подбор оборудования</span>
   </div>
 </div>
 
@@ -49,7 +64,7 @@
   </div>
 <% } %>
 
-<form method="POST" action="/calc" id="calcForm" class="stack">
+<form method="POST" action="/calc" id="calcForm" class="stack calc-form">
 
   <!-- ======================= 01. Режим работы ======================= -->
   <section class="panel">
@@ -57,7 +72,7 @@
       <span class="panel__num">01</span>
       <div class="panel__titles">
         <h2 class="panel__title">Режим работы</h2>
-        <p class="panel__sub">Хладагент, температуры и требуемая холодопроизводительность</p>
+        <p class="panel__sub">Хладагент, температуры и мощность</p>
       </div>
     </div>
 
@@ -73,19 +88,19 @@
         </div>
 
         <div class="field">
-          <label class="field__label" for="requiredKw">Требуемая мощность, кВт <span class="field__req">*</span></label>
+          <label class="field__label" for="requiredKw">Мощность, кВт <span class="field__req">*</span></label>
           <input type="number" id="requiredKw" name="requiredKw" step="0.1" min="0.1" required
                  value="<%= f.requiredKw || '' %>" placeholder="например 45">
         </div>
 
         <div class="field">
-          <label class="field__label" for="tEvap">Температура кипения, °C <span class="field__req">*</span></label>
+          <label class="field__label" for="tEvap">t кипения, °C <span class="field__req">*</span></label>
           <input type="number" id="tEvap" name="tEvap" step="1" required
                  value="<%= f.tEvap != null ? f.tEvap : -10 %>">
         </div>
 
         <div class="field">
-          <label class="field__label" for="tCond">Температура конденсации, °C <span class="field__req">*</span></label>
+          <label class="field__label" for="tCond">t конденсации, °C <span class="field__req">*</span></label>
           <input type="number" id="tCond" name="tCond" step="1" required
                  value="<%= f.tCond != null ? f.tCond : 45 %>">
         </div>
@@ -122,7 +137,7 @@
       <span class="panel__num">02</span>
       <div class="panel__titles">
         <h2 class="panel__title">Компрессоры</h2>
-        <p class="panel__sub">Автоматический подбор по мощности либо ручной выбор модели</p>
+        <p class="panel__sub">Автоподбор по мощности или ручной выбор модели</p>
       </div>
     </div>
 
@@ -168,6 +183,13 @@
                 <option value="<%= n %>" <%= selAutoMaxQty === String(n) ? 'selected' : '' %>><%= n %></option>
               <% }) %>
             </select>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="tolerancePct">Допуск, %</label>
+            <input type="number" id="tolerancePct" name="tolerancePct" step="1" min="0" max="100"
+                   value="<%= f.tolerancePct != null ? f.tolerancePct : 10 %>">
+            <p class="field__hint">± от требуемой мощности</p>
           </div>
         </div>
       </div>
@@ -216,22 +238,46 @@
       <span class="panel__num">03</span>
       <div class="panel__titles">
         <h2 class="panel__title">Опции</h2>
-        <p class="panel__sub">Обязательные включены автоматически и отмечены ниже</p>
+        <p class="panel__sub">Отметьте позиции, которые нужны в агрегате</p>
       </div>
     </div>
 
     <div class="panel__body">
       <div class="options-grid">
-        <% options.forEach(o => { %>
+        <% selectableOptions.forEach(o => { %>
           <label class="option-item">
             <input type="checkbox" name="options" value="<%= o.code %>"
-                   <%= (o.mandatory || selOpts.includes(o.code)) ? 'checked' : '' %>
-                   <%= o.mandatory ? 'disabled' : '' %>>
+                   <%= selOpts.includes(o.code) ? 'checked' : '' %>>
             <span class="option-item__text"><%= o.name %></span>
-            <% if (o.mandatory) { %><span class="badge">обязательная</span><% } %>
           </label>
         <% }) %>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ 04. Стандартная комплектация ============ -->
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__num">04</span>
+      <div class="panel__titles">
+        <h2 class="panel__title">Стандартная комплектация</h2>
+        <p class="panel__sub">Входит в агрегат всегда</p>
+      </div>
+    </div>
+
+    <div class="panel__body">
+      <ul class="std-list">
+        <% standardOptions.forEach(o => {
+             const standardItem = standardArticles.get(o.code); %>
+          <li class="std-list__item">
+            <span class="std-list__name"><%= o.name %></span>
+            <% if (standardItem) { %>
+              <span class="std-list__article"><%= standardItem.article %></span>
+              <span class="std-list__qty"><%= standardItem.qty %> шт</span>
+            <% } %>
+          </li>
+        <% }) %>
+      </ul>
     </div>
   </section>
 
@@ -336,7 +382,14 @@
   <section class="panel panel--flush u-mt-6">
     <div class="list-head">
       <span class="list-head__title">Компрессоры</span>
-      <span class="list-head__meta">Позиций: <b class="num"><%= result.selection.items.length %></b></span>
+      <span class="list-head__meta">
+        Позиций: <b class="num"><%= result.selection.items.length %></b>
+        <% if (result.deviationPct != null) { %>
+          · отклонение от требуемой мощности
+          <b class="num"><%= result.deviationPct > 0 ? '+' : '' %><%= result.deviationPct %>%</b>
+          при допуске ±<b class="num"><%= result.input.tolerancePct %>%</b>
+        <% } %>
+      </span>
     </div>
     <div class="table-wrap table-wrap--plain">
       <table class="data-table">
@@ -439,7 +492,7 @@
     <% } %>
   </section>
 
-  <% if (result.vibration) { %>
+  <% if (result.vibration && vibrationInBom) { %>
     <section class="panel panel--flush u-mt-6">
       <div class="list-head">
         <span class="list-head__title">Виброгасители — индивидуально на каждый компрессор</span>
@@ -517,6 +570,7 @@
     <% Object.entries({
       refrigerant: result.input.refrigerant, tEvap: result.input.tEvap, tCond: result.input.tCond,
       dTsh: result.input.dTsh, dTsc: result.input.dTsc, requiredKw: result.input.requiredKw,
+      tolerancePct: result.input.tolerancePct,
       housingCode: result.input.housingCode || '', mode: result.input.mode,
       autoType: result.input.auto.type, autoManufacturer: result.input.auto.manufacturerId,
       manualType: result.input.manual.type || 'any', manualManufacturer: result.input.manual.manufacturerId || 'any',

@@ -7,6 +7,7 @@
 const express = require('express');
 const { db } = require('../db/database');
 const { runCalculation } = require('../services/calc');
+const { normalizeTolerancePct } = require('../services/selection');
 const { nextQuoteNumber } = require('../services/pricing');
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.post('/save', (req, res) => {
       dTsh: parseFloat(b.dTsh) || 10,
       dTsc: parseFloat(b.dTsc) || 0,
       requiredKw: parseFloat(b.requiredKw) || 0,
+      tolerancePct: normalizeTolerancePct(b.tolerancePct),
       housingCode: b.housingCode || null,
       mode: b.mode === 'manual' ? 'manual' : 'auto',
       auto: { type: b.autoType || 'any', manufacturerId: b.autoManufacturer || 'any', maxQty: 3 },

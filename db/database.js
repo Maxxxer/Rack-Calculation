@@ -192,7 +192,38 @@ function syncOptions() {
   db.prepare(`DELETE FROM options WHERE code NOT IN (${codes.map(() => '?').join(',')})`).run(...codes);
 }
 
+/**
+ * Диаметр нагнетания всегда меньше диаметра всасывания: давление нагнетания
+ * в 4–5 раз выше давления всасывания, поэтому линия нагнетания тоньше.
+ * Если в исходных данных пара перепутана — возвращаем её в правильном порядке.
+ */
+function normalizePorts(suctionIn, dischargeIn) {
+  if (suctionIn == null || dischargeIn == null) return [suctionIn, dischargeIn];
+  return dischargeIn > suctionIn ? [dischargeIn, suctionIn] : [suctionIn, dischargeIn];
+}
+
+/**
+ * Разовая починка справочника компрессоров при старте приложения:
+ * в демонстрационных данных у серий Refcomp SP* и Xecom диаметры были
+ * записаны в обратном порядке. Возвращает число исправленных моделей.
+ */
+function fixCompressorPorts() {
+  const rows = db.prepare(`
+    SELECT id, suction_d_in, discharge_d_in FROM compressors
+    WHERE suction_d_in IS NOT NULL AND discharge_d_in IS NOT NULL
+      AND discharge_d_in > suction_d_in`).all();
+  if (!rows.length) return 0;
+  const upd = db.prepare('UPDATE compressors SET suction_d_in = ?, discharge_d_in = ? WHERE id = ?');
+  for (const r of rows) upd.run(r.discharge_d_in, r.suction_d_in, r.id);
+  return rows.length;
+}
+
 initSchema();
 syncOptions();
 
-module.exports = { db, DB_PATH, syncOptions };
+const fixedPorts = fixCompressorPorts();
+if (fixedPorts) {
+  console.log(`Патрубки компрессоров: порядок всасывание/нагнетание исправлен у ${fixedPorts} моделей.`);
+}
+
+module.exports = { db, DB_PATH, syncOptions, normalizePorts };

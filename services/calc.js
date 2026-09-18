@@ -29,7 +29,8 @@ const FIXED_ITEMS = [
  * Полный расчет.
  * @param {Object} input
  *  refrigerant, tEvap, tCond, dTsh (перегрев, К), dTsc (переохлаждение, К),
- *  requiredKw, housingCode (артикул корпуса или null),
+ *  requiredKw, tolerancePct (допуск попадания в требуемую мощность, %),
+ *  housingCode (артикул корпуса или null),
  *  mode: 'auto' | 'manual',
  *  auto: { type, manufacturerId, maxQty },
  *  manual: { compressorId, qty },
@@ -40,6 +41,8 @@ function runCalculation(input, discountPercent = 0) {
     refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0,
     requiredKw = 0, housingCode = null
   } = input;
+
+  const tolerancePct = selection.normalizeTolerancePct(input.tolerancePct);
 
   if (!refrigerant) throw new Error('Не указан хладагент');
   if (tEvap == null || tCond == null) throw new Error('Не указаны температуры кипения/конденсации');
@@ -55,6 +58,7 @@ function runCalculation(input, discountPercent = 0) {
       type: (input.auto && input.auto.type) || 'any',
       manufacturerId: (input.auto && input.auto.manufacturerId) || 'any',
       maxQty: (input.auto && input.auto.maxQty) || 3,
+      tolerancePct,
       topN: 5
     });
     if (!variants.length) throw new Error('Не найдено подходящих компрессоров: проверьте каталог и режим работы');
@@ -63,6 +67,21 @@ function runCalculation(input, discountPercent = 0) {
 
   // 2. Пересчет характеристик
   const sel = selection.evaluateSelection({ refrigerant, tEvap, tCond, items: chosen.items });
+
+  // Отклонение подобранной мощности от требуемой. Для ручного выбора режима
+  // требуемая мощность может быть не задана — тогда показывать нечего.
+  const deviationPct = requiredKw > 0
+    ? +((sel.totals.q_kw / requiredKw - 1) * 100).toFixed(1)
+    : null;
+
+  const calcWarnings = [];
+  if (chosen.alternatives && deviationPct != null && Math.abs(deviationPct) > tolerancePct) {
+    const sign = deviationPct > 0 ? '+' : '';
+    calcWarnings.push(
+      `Подобранные компрессоры дают ${sign}${deviationPct} % к требуемой мощности. ` +
+      `В допуск ±${tolerancePct} % попасть не удалось — показан ближайший возможный вариант.`
+    );
+  }
 
   // 3. Трубопроводы
   const pipes = piping.calcPiping({ refrigerant, tEvap, tCond, dTsh, dTsc, items: sel.items });
@@ -90,16 +109,21 @@ function runCalculation(input, discountPercent = 0) {
   };
   const opts = optionsSvc.resolveOptions(ctx, input.selectedOptions || []);
 
-  // 6. Корпус
-  let housing = null;
-  if (housingCode) {
-    housing = db.prepare("SELECT * FROM components WHERE category = 'housing' AND code = ?").get(housingCode);
+  // 6. Корпус — ровно одна позиция: выбранный в форме, иначе первый из каталога.
+  // Раньше при выбранном корпусе позиция попадала в спецификацию дважды.
+  let housing = housingCode
+    ? db.prepare("SELECT * FROM components WHERE category = 'housing' AND code = ?").get(housingCode)
+    : null;
+  if (!housing) {
+    housing = db.prepare(`SELECT * FROM components
+                          WHERE category = 'housing' AND active = 1
+                          ORDER BY size_in, capacity_kw, id`).get();
   }
   const housingItem = housing ? {
     option_code: 'housing', section: 'housing',
     article: housing.code, name: `Корпус ${housing.code}`, qty: 1,
     unit_price_eur: housing.price_eur, total_price_eur: housing.price_eur,
-    mandatory: true, auto: false, selected: true
+    mandatory: true, auto: !housingCode, selected: !!housingCode
   } : null;
 
   // 7. Фиксированные позиции
@@ -131,7 +155,9 @@ function runCalculation(input, discountPercent = 0) {
   const cycle = refr.cyclePoints(refrigerant, tEvap, tCond, dTsh, dTsc);
 
   return {
-    input: { ...input },
+    // Допуск сохраняем в приведённом виде — он попадает в скрытые поля формы
+    // и в сохранённое КП.
+    input: { ...input, tolerancePct },
     cycle,
     selection: sel,
     piping: pipes,
@@ -139,7 +165,8 @@ function runCalculation(input, discountPercent = 0) {
     options: opts,
     bom,
     totals,
-    warnings: [...opts.warnings, ...vibrationPlans.warnings]
+    deviationPct,
+    warnings: [...calcWarnings, ...opts.warnings, ...vibrationPlans.warnings]
   };
 }
 

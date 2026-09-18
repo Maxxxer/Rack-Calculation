@@ -12,7 +12,7 @@
 
 const express = require('express');
 const XLSX = require('xlsx');
-const { db } = require('../db/database');
+const { db, normalizePorts } = require('../db/database');
 
 const router = express.Router();
 
@@ -118,10 +118,14 @@ router.post('/import', (req, res) => {
       const refExists = db.prepare('SELECT code FROM refrigerants WHERE LOWER(code) = LOWER(?)').get(refrigerant);
       if (!refExists) { skipped++; continue; }
 
+      // Диаметр нагнетания всегда меньше всасывания: если колонки в файле
+      // поставщика перепутаны, пара вернётся в правильном порядке.
+      const [portSuction, portDischarge] = normalizePorts(getNum(r[6]), getNum(r[7]));
+
       insert.run(
         mfrId, model, 'scroll', refExists.code,
         getNum(r[1]) || 50, getNum(r[2]) || 400,
-        getNum(r[4]), getNum(r[6]), getNum(r[7]), getNum(r[8]),
+        getNum(r[4]), portSuction, portDischarge, getNum(r[8]),
         getNum(r[12]) != null ? getNum(r[12]) : -40, getNum(r[13]) != null ? getNum(r[13]) : 10,
         getNum(r[10]) != null ? getNum(r[10]) : 10, getNum(r[11]) != null ? getNum(r[11]) : 60,
         defaultPrice,

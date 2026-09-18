@@ -163,6 +163,10 @@ function resolveOptions(ctx, selectedCodes = []) {
   const warnings = [];
 
   for (const opt of opts) {
+    // Корпус выбирается в форме (или подбирается оркестратором) отдельно —
+    // здесь он не обрабатывается, иначе позиция попала бы в BOM дважды.
+    if (opt.code === 'housing') continue;
+
     let rule = null;
     try { rule = opt.auto_rule ? JSON.parse(opt.auto_rule) : null; } catch (_) { /* ignore */ }
     const auto = ruleMatches(rule, ctx);

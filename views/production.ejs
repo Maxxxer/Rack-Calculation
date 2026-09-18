@@ -8,6 +8,10 @@
     { label: 'Нагнетание', key: 'discharge' },
     { label: 'Жидкость', key: 'liquid' }
   ];
+
+  // Таблицу виброгасителей показываем, только если они вошли в спецификацию.
+  const VIBRATION_CODES = ['vibration_suction', 'vibration_discharge'];
+  const vibrationInBom = result.bom.some(i => VIBRATION_CODES.includes(i.option_code));
 %>
 
 <div class="page-head">
@@ -112,7 +116,7 @@
   </div>
 </section>
 
-<% if (result.vibration) { %>
+<% if (result.vibration && vibrationInBom) { %>
   <section class="panel panel--flush">
     <div class="list-head">
       <span class="list-head__title">Виброгасители — индивидуально на каждый компрессор</span>

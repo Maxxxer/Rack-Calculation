@@ -184,8 +184,8 @@
 .panel__head {
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-4);
-  padding: var(--sp-5) var(--sp-6);
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -228,15 +228,15 @@
 }
 
 .panel__body {
-  padding: var(--sp-6);
+  padding: var(--sp-5);
 }
 
 .panel__body > * + * {
-  margin-top: var(--sp-6);
+  margin-top: var(--sp-5);
 }
 
 .panel__foot {
-  padding: var(--sp-4) var(--sp-6);
+  padding: var(--sp-3) var(--sp-5);
   border-top: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -251,6 +251,11 @@
   border-radius: 0;
 }
 
+/* Панель во всю ширину родительской сетки (форма калькулятора) */
+.panel--full {
+  grid-column: 1 / -1;
+}
+
 /* ============================================================================
    Карточка — простая поверхность (админка, служебные блоки, формы)
    ========================================================================== */
@@ -258,11 +263,11 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  padding: var(--sp-6);
+  padding: var(--sp-5);
 }
 
 .card > * + * {
-  margin-top: var(--sp-5);
+  margin-top: var(--sp-4);
 }
 
 .card__head {
@@ -343,7 +348,7 @@ fieldset.card > legend {
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-5) var(--sp-6);
+  gap: var(--sp-4) var(--sp-5);
 }
 
 .field-grid--3 {
@@ -370,7 +375,7 @@ fieldset.card > legend {
 
 .field__label {
   display: block;
-  margin-bottom: var(--sp-2);
+  margin-bottom: 6px;
   font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: var(--tracking-caps);
@@ -408,8 +413,8 @@ input[type='file'],
 select,
 textarea {
   width: 100%;
-  min-height: 40px;
-  padding: 8px 12px;
+  min-height: 36px;
+  padding: 7px 11px;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
@@ -500,8 +505,8 @@ input[type='file']::file-selector-button:hover {
 .choice {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding: 10px 14px;
+  gap: var(--sp-2);
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
@@ -545,7 +550,7 @@ input[type='file']::file-selector-button:hover {
 .options-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
-  gap: var(--sp-2);
+  gap: 6px;
 }
 
 @media (min-width: 700px) {
@@ -563,8 +568,8 @@ input[type='file']::file-selector-button:hover {
 .option-item {
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-3);
-  padding: 10px 12px;
+  gap: var(--sp-2);
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface);
@@ -656,7 +661,7 @@ input[type='file']::file-selector-button:hover {
 }
 
 .data-table th {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text-muted);
@@ -670,7 +675,7 @@ input[type='file']::file-selector-button:hover {
 }
 
 .data-table td {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-soft);
   vertical-align: top;
 }
@@ -718,7 +723,7 @@ input[type='file']::file-selector-button:hover {
 }
 
 .data-table tfoot td {
-  padding: 11px 14px;
+  padding: 9px 12px;
   border-top: 1px solid var(--border);
   background: var(--surface-2);
   font-weight: 600;
@@ -924,7 +929,7 @@ input[type='file']::file-selector-button:hover {
 .alert {
   display: flex;
   gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-5);
+  padding: var(--sp-3) var(--sp-4);
   border: 1px solid var(--border);
   border-left-width: 3px;
   border-radius: var(--r-sm);
@@ -1083,7 +1088,7 @@ details.disclosure[open] > summary {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-6);
+  padding: var(--sp-3) var(--sp-5);
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -1102,7 +1107,7 @@ details.disclosure[open] > summary {
 }
 /* Подпись под таблицей внутри .table-wrap */
 .table-foot {
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
   border-top: 1px solid var(--border);
   background: var(--surface-2);
   font-size: var(--fs-sm);
@@ -1115,7 +1120,7 @@ details.disclosure[open] > summary {
 }
 /* Таблица с внутренними отступами панели — когда .panel__body не используется */
 .table-inset {
-  margin: 0 var(--sp-6) var(--sp-6);
+  margin: 0 var(--sp-5) var(--sp-5);
 }
 
 /* Продолжение тела панели после таблицы: без верхнего отступа */
