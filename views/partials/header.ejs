@@ -1,29 +1,71 @@
+<%
+  // Активный раздел для навигации: res.locals.currentPath выставляется
+  // в server.js один раз для всех страниц.
+  const navPath = typeof currentPath !== 'undefined' && currentPath ? currentPath : '';
+  const isActive = (href) => navPath === href || navPath.startsWith(href + '/');
+  const pageTitle = typeof title !== 'undefined' && title ? title : 'Подбор холодильного агрегата';
+%>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title : 'Подбор холодильного агрегата' %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#173F6D">
+  <meta name="description" content="Подбор и расчёт холодильных агрегатов: компрессоры, трубопроводы, виброгасители, спецификация и коммерческое предложение.">
+  <title><%= pageTitle %> · MAIR</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <nav class="topnav">
-    <a class="brand" href="/calc" title="Перейти к подбору оборудования">
-      <img src="/assets/logo-mair.svg" alt="MAIR" class="brand-logo">
-      <span class="brand-text">Подбор холодильного агрегата</span>
-    </a>
-    <% if (user) { %>
-      <div class="nav-links">
-        <a href="/calc">Подбор</a>
-        <a href="/quotes">Мои КП</a>
-        <% if (user.role === 'admin') { %>
-          <a href="/admin/users">Пользователи</a>
-          <a href="/admin/import">Импорт Excel</a>
-          <a href="/admin/catalog">Каталог</a>
-        <% } %>
-        <span class="user-info"><%= user.name %></span>
-        <form method="POST" action="/logout" class="inline-form"><button type="submit" class="btn-link">Выход</button></form>
-      </div>
-    <% } %>
-  </nav>
-  <main class="container">
+  <a class="skip-link" href="#content">Перейти к содержимому</a>
+
+  <header class="appbar">
+    <div class="appbar__inner">
+      <a class="brand" href="/calc" title="Перейти к подбору оборудования">
+        <span class="brand__mark"><%- include('brand-mark') %></span>
+        <span class="brand__text">
+          <strong>MAIR</strong>
+          <span>Подбор холодильного агрегата</span>
+        </span>
+      </a>
+
+      <% if (user) { %>
+        <nav class="appbar__nav" aria-label="Основная навигация">
+          <a class="navlink" href="/calc"<% if (isActive('/calc')) { %> aria-current="page"<% } %>>
+            <%- include('icon', { name: 'calculator' }) %>Подбор
+          </a>
+          <a class="navlink" href="/quotes"<% if (isActive('/quotes')) { %> aria-current="page"<% } %>>
+            <%- include('icon', { name: 'file-text' }) %>Мои КП
+          </a>
+          <% if (user.role === 'admin') { %>
+            <a class="navlink" href="/admin/users"<% if (isActive('/admin/users')) { %> aria-current="page"<% } %>>
+              <%- include('icon', { name: 'users' }) %>Пользователи
+            </a>
+            <a class="navlink" href="/admin/import"<% if (isActive('/admin/import')) { %> aria-current="page"<% } %>>
+              <%- include('icon', { name: 'upload' }) %>Импорт Excel
+            </a>
+            <a class="navlink" href="/admin/catalog"<% if (isActive('/admin/catalog')) { %> aria-current="page"<% } %>>
+              <%- include('icon', { name: 'database' }) %>Каталог
+            </a>
+          <% } %>
+        </nav>
+
+        <div class="appbar__user">
+          <span class="userchip">
+            <span class="userchip__name"><%= user.name %></span>
+            <span class="userchip__role"><%= user.role === 'admin' ? 'Администратор' : 'Инженер' %></span>
+          </span>
+          <form method="POST" action="/logout" class="inline-form">
+            <button type="submit" class="navlink" title="Выйти из системы">
+              <%- include('icon', { name: 'log-out' }) %>Выход
+            </button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  </header>
+
+  <main class="shell" id="content">

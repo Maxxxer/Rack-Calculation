@@ -1,40 +1,64 @@
 <%- include('partials/header', { title: 'Регистрация' }) %>
 
-<div class="auth-card">
-  <h1>Регистрация</h1>
-  <% if (typeof success !== 'undefined' && success) { %>
-    <div class="alert alert-success">
-      ✅ Заявка отправлена. Администратор получит уведомление и подтвердит ваш доступ.
-      Вы сможете войти после одобрения.
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-card__head">
+      <span class="kicker">Заявка на доступ</span>
+      <h1>Регистрация</h1>
+      <p class="auth-card__note">Доступ откроется после подтверждения администратором.</p>
     </div>
-    <p><a href="/login" class="btn btn-primary">К входу</a></p>
-  <% } else { %>
-    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
-    <form method="POST" action="/register">
-      <div class="form-group">
-        <label>Имя *</label>
-        <input type="text" name="name" required>
+
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert--success" role="status">
+        <span class="alert__icon"><%- include('partials/icon', { name: 'check-circle' }) %></span>
+        <div class="alert__body">
+          <p class="alert__title">Заявка отправлена</p>
+          <p>Администратор получил уведомление и подтвердит ваш доступ. После одобрения вы сможете войти под указанной почтой.</p>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Компания</label>
-        <input type="text" name="company">
-      </div>
-      <div class="form-group">
-        <label>Телефон</label>
-        <input type="tel" name="phone">
-      </div>
-      <div class="form-group">
-        <label>Email *</label>
-        <input type="email" name="email" required>
-      </div>
-      <div class="form-group">
-        <label>Пароль (мин. 6 символов) *</label>
-        <input type="password" name="password" required minlength="6">
-      </div>
-      <button type="submit" class="btn btn-primary btn-block">Отправить заявку</button>
-    </form>
-    <p class="auth-hint">Уже есть аккаунт? <a href="/login">Войти</a></p>
-  <% } %>
+      <a href="/login" class="btn btn--primary btn--block">К входу</a>
+    <% } else { %>
+      <% if (error) { %>
+        <div class="alert alert--error" role="alert">
+          <span class="alert__icon"><%- include('partials/icon', { name: 'alert' }) %></span>
+          <div class="alert__body"><%= error %></div>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/register">
+        <div class="field">
+          <label class="field__label" for="regName">Имя <span class="field__req">*</span></label>
+          <input type="text" id="regName" name="name" autocomplete="name" required>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label class="field__label" for="regCompany">Компания</label>
+            <input type="text" id="regCompany" name="company" autocomplete="organization">
+          </div>
+          <div class="field">
+            <label class="field__label" for="regPhone">Телефон</label>
+            <input type="tel" id="regPhone" name="phone" autocomplete="tel">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="regEmail">Email <span class="field__req">*</span></label>
+          <input type="email" id="regEmail" name="email" autocomplete="username" required>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="regPassword">Пароль <span class="field__req">*</span></label>
+          <input type="password" id="regPassword" name="password" autocomplete="new-password" minlength="6" required>
+          <p class="field__hint">Минимум 6 символов.</p>
+        </div>
+
+        <button type="submit" class="btn btn--primary btn--lg btn--block">Отправить заявку</button>
+      </form>
+    <% } %>
+  </div>
+
+  <p class="auth-foot">Уже есть аккаунт? <a href="/login">Войти</a></p>
 </div>
 
 <%- include('partials/footer') %>

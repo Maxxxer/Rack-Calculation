@@ -1,33 +1,75 @@
 <%- include('partials/header', { title: 'Коммерческие предложения' }) %>
 
-<h1>Коммерческие предложения</h1>
+<%
+  const isAdmin = user.role === 'admin';
+  const STATUS_LABELS = {
+    draft: 'Черновик',
+    sent: 'На утверждении',
+    approved: 'Утверждено',
+    rejected: 'Отклонено'
+  };
+  const statusLabel = (s) => STATUS_LABELS[s] || s;
+%>
 
-<table class="table">
-  <tr>
-    <th>Номер</th><th>Клиент</th><th>Дата</th><th>Сумма, EUR</th><th>Скидка</th><th>Итого, EUR</th><th>Статус</th><th></th>
-  </tr>
-  <% quotes.forEach(q => { %>
-    <tr>
-      <td><%= q.number %></td>
-      <td><%= q.user_name %></td>
-      <td><%= q.created_at %></td>
-      <td><%= q.total_eur %></td>
-      <td><%= q.discount_percent %>%</td>
-      <td><b><%= q.total_after_discount_eur %></b></td>
-      <td>
-        <span class="status status-<%= q.status %>"><%= q.status %></span>
-      </td>
-      <td><a href="/quotes/<%= encodeURIComponent(q.number) %>" class="btn btn-primary btn-sm">Открыть</a></td>
-    </tr>
-  <% }) %>
-</table>
+<div class="page-head">
+  <div class="page-head__main">
+    <span class="kicker">Документы</span>
+    <h1>Коммерческие предложения</h1>
+    <p class="page-head__lead">
+      Все расчёты, сохранённые как КП<%= isAdmin ? ' — вы видите предложения всех пользователей' : '' %>.
+    </p>
+  </div>
+  <div class="page-head__aside">
+    <a href="/calc" class="btn btn--primary">
+      <%- include('partials/icon', { name: 'calculator' }) %>Новый расчёт
+    </a>
+  </div>
+</div>
 
-<style>
-.status { padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; }
-.status-draft { background: #e5e7eb; color: #374151; }
-.status-sent { background: #dbeafe; color: #1e40af; }
-.status-approved { background: #d1fae5; color: #065f46; }
-.status-rejected { background: #fee2e2; color: #991b1b; }
-</style>
+<% if (!quotes.length) { %>
+  <div class="empty">
+    <span class="empty__icon"><%- include('partials/icon', { name: 'inbox' }) %></span>
+    <p class="empty__title">Пока ни одного предложения</p>
+    <p class="empty__text">Выполните расчёт и сохраните его как КП — документ появится в этом списке.</p>
+    <a href="/calc" class="btn btn--primary">Перейти к подбору</a>
+  </div>
+<% } else { %>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Номер</th>
+          <% if (isAdmin) { %><th>Клиент</th><% } %>
+          <th>Дата</th>
+          <th class="num">Сумма, EUR</th>
+          <th class="num">Скидка</th>
+          <th class="num">Итого, EUR</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% quotes.forEach(q => { %>
+          <tr>
+            <td>
+              <a class="quote-number" href="/quotes/<%= encodeURIComponent(q.number) %>"><%= q.number %></a>
+            </td>
+            <% if (isAdmin) { %><td><%= q.user_name %></td><% } %>
+            <td class="num"><%= q.created_at %></td>
+            <td class="num"><%= q.total_eur %></td>
+            <td class="num"><%= q.discount_percent %>%</td>
+            <td class="num num--strong"><%= q.total_after_discount_eur %></td>
+            <td>
+              <span class="status status-<%= q.status %>"><%= statusLabel(q.status) %></span>
+            </td>
+            <td class="cell-actions">
+              <a href="/quotes/<%= encodeURIComponent(q.number) %>" class="btn btn--secondary btn--sm">Открыть</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
 
 <%- include('partials/footer') %>

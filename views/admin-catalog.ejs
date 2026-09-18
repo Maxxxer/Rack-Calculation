@@ -1,25 +1,69 @@
 <%- include('partials/header', { title: 'Каталог' }) %>
 
-<h1>Каталог</h1>
-<p class="hint">Активных компрессоров: <b><%= compressorsCount %></b></p>
+<div class="page-head">
+  <div class="page-head__main">
+    <span class="kicker">Администрирование</span>
+    <h1>Каталог компонентов</h1>
+    <p class="page-head__lead">
+      Справочник активных компонентов по разделам. Данные используются при подборе
+      опций, трубопроводов и виброгасителей.
+    </p>
+  </div>
+  <div class="page-head__aside">
+    <span class="admin-note">
+      Активных компрессоров: <strong><%= compressorsCount %></strong>
+    </span>
+  </div>
+</div>
 
-<% Object.entries(byCat).forEach(([cat, items]) => { %>
-  <fieldset class="card">
-    <legend><%= cat %> (<%= items.length %>)</legend>
-    <table class="table">
-      <tr><th>Артикул</th><th>Наименование</th><th>Ø, "</th><th>Q, кВт</th><th>Q2, кВт</th><th>Объем, л</th><th>Цена, EUR</th></tr>
-      <% items.forEach(c => { %>
-        <tr>
-          <td><b><%= c.code %></b></td><td><%= c.name %></td>
-          <td><%= c.size_in != null ? c.size_in : '—' %></td>
-          <td><%= c.capacity_kw != null ? c.capacity_kw : '—' %></td>
-          <td><%= c.capacity_kw2 != null ? c.capacity_kw2 : '—' %></td>
-          <td><%= c.volume_l != null ? c.volume_l : '—' %></td>
-          <td><%= c.price_eur %></td>
-        </tr>
-      <% }) %>
-    </table>
-  </fieldset>
-<% }) %>
+<% const categories = Object.entries(byCat); %>
+
+<% if (!categories.length) { %>
+  <div class="empty">
+    <span class="empty__icon"><%- include('partials/icon', { name: 'database' }) %></span>
+    <p class="empty__title">Каталог пуст</p>
+    <p class="empty__text">Загрузите каталог компрессоров из Excel или заполните справочник компонентов.</p>
+    <a href="/admin/import" class="btn btn--primary">Перейти к импорту</a>
+  </div>
+<% } else { %>
+  <div class="stack">
+    <% categories.forEach(([category, items]) => { %>
+      <section class="panel panel--flush">
+        <div class="list-head">
+          <span class="list-head__title"><%= category %></span>
+          <span class="list-head__meta">Позиций: <b class="num"><%= items.length %></b></span>
+        </div>
+        <div class="table-wrap table-wrap--plain">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Артикул</th>
+                <th>Наименование</th>
+                <th class="num">Ø, "</th>
+                <th class="num">Q, кВт</th>
+                <th class="num">Q2, кВт</th>
+                <th class="num">Объём, л</th>
+                <th class="num">Цена, EUR</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% items.forEach(c => { %>
+                <tr>
+                  <td class="cell-code"><%= c.code %></td>
+                  <td class="cell-name"><%= c.name %></td>
+                  <td class="num"><%= c.size_in != null ? c.size_in : '—' %></td>
+                  <td class="num"><%= c.capacity_kw != null ? c.capacity_kw : '—' %></td>
+                  <td class="num"><%= c.capacity_kw2 != null ? c.capacity_kw2 : '—' %></td>
+                  <td class="num"><%= c.volume_l != null ? c.volume_l : '—' %></td>
+                  <td class="num num--strong"><%= c.price_eur %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% }) %>
+  </div>
+<% } %>
 
 <%- include('partials/footer') %>

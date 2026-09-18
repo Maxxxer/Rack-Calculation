@@ -1,0 +1,490 @@
+/* ============================================================================
+   Rack Calculation — 06 · Печатный документ КП
+   Автономный стиль: не подключает style.css и не наследует тёмную тему
+   приложения — коммерческое предложение всегда печатается в светлой теме,
+   поэтому цвета заданы здесь собственными переменными --doc-*.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --doc-brand: #173f6d;
+  --doc-brand-2: #2e6fb7;
+  --doc-ink: #16202b;
+  --doc-ink-2: #3c4a58;
+  --doc-muted: #6b7887;
+  --doc-line: #d5dce4;
+  --doc-line-soft: #e8edf2;
+  --doc-surface: #ffffff;
+  --doc-surface-2: #f5f8fb;
+  --doc-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --doc-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #e9edf2;
+  color: var(--doc-ink);
+  font-family: var(--doc-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding: 32px 16px 64px;
+}
+/* ============================================================================
+   Панель управления (только на экране)
+   ========================================================================== */
+.doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto 20px;
+}
+
+.doc-toolbar__spacer {
+  margin-left: auto;
+}
+
+.doc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.doc-btn--primary {
+  background: var(--doc-brand);
+  border-color: var(--doc-brand);
+  color: #fff;
+}
+
+.doc-btn--primary:hover {
+  background: #102e52;
+  border-color: #102e52;
+  color: #fff;
+}
+
+.doc-btn--ghost {
+  background: #fff;
+  border-color: var(--doc-line);
+  color: var(--doc-ink-2);
+}
+
+.doc-btn--ghost:hover {
+  border-color: var(--doc-brand-2);
+  color: var(--doc-brand-2);
+}
+
+.doc-btn .icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.doc-toolbar__hint {
+  font-size: 12px;
+  color: var(--doc-muted);
+}
+
+/* ============================================================================
+   Лист документа
+   ========================================================================== */
+.doc-page {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 44px 48px;
+  background: var(--doc-surface);
+  border: 1px solid var(--doc-line);
+  box-shadow: 0 18px 48px -24px rgba(16, 46, 82, 0.35);
+}
+
+/* -- Шапка --------------------------------------------------------------- */
+.doc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--doc-brand);
+}
+
+.doc-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--doc-brand);
+}
+
+.doc-brand svg {
+  height: 26px;
+  width: auto;
+  fill: currentColor;
+  stroke: none;
+}
+
+.doc-brand__text {
+  display: flex;
+  flex-direction: column;
+  padding-left: 12px;
+  border-left: 1px solid var(--doc-line);
+  line-height: 1.25;
+}
+
+.doc-brand__name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--doc-muted);
+}
+
+.doc-brand__desc {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--doc-brand);
+}
+
+.doc-head__id {
+  text-align: right;
+}
+
+.doc-head__id h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--doc-brand);
+}
+
+.doc-head__number {
+  margin-top: 4px;
+  font-family: var(--doc-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--doc-ink);
+}
+
+.doc-head__date {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--doc-muted);
+}
+
+/* -- Реквизиты клиента --------------------------------------------------- */
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-top: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--doc-line-soft);
+  font-size: 12px;
+}
+
+.doc-meta dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--doc-muted);
+}
+
+.doc-meta dd {
+  margin-top: 2px;
+  font-weight: 600;
+  color: var(--doc-ink);
+}
+
+/* -- Разделы ------------------------------------------------------------- */
+.doc-section {
+  margin-top: 24px;
+}
+
+.doc-section__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--doc-line);
+}
+
+.doc-section__num {
+  font-family: var(--doc-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--doc-brand-2);
+}
+
+.doc-section__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--doc-brand);
+}
+
+/* -- Двухколоночный блок ------------------------------------------------- */
+.doc-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 36px;
+}
+
+.doc-cols > * {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+/* ============================================================================
+   Таблицы документа
+   ========================================================================== */
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.doc-table th {
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--doc-line);
+  background: var(--doc-surface-2);
+  color: var(--doc-ink-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.doc-table td {
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--doc-line-soft);
+  vertical-align: top;
+}
+
+.doc-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.doc-table .num {
+  text-align: right;
+  font-family: var(--doc-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.doc-table .code {
+  font-family: var(--doc-mono);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.doc-table .strong {
+  font-weight: 600;
+  color: var(--doc-brand);
+}
+
+/* Сводная таблица «параметр — значение» */
+.doc-kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.doc-kv td {
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--doc-line);
+  vertical-align: baseline;
+}
+
+.doc-kv tr:last-child td {
+  border-bottom: 0;
+}
+
+.doc-kv td:first-child {
+  width: 58%;
+  padding-right: 12px;
+  color: var(--doc-muted);
+}
+
+.doc-kv td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* -- Итоги --------------------------------------------------------------- */
+.doc-totals {
+  width: 100%;
+  max-width: 340px;
+  margin-left: auto;
+  margin-top: 14px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.doc-totals td {
+  padding: 5px 0;
+  vertical-align: baseline;
+}
+
+.doc-totals td:first-child {
+  color: var(--doc-muted);
+}
+
+.doc-totals td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.doc-totals tr.total td {
+  padding-top: 9px;
+  border-top: 1px solid var(--doc-brand);
+  color: var(--doc-ink);
+  font-weight: 700;
+}
+
+.doc-totals tr.grand td {
+  padding: 12px 0 0;
+  border-top: 2px solid var(--doc-brand);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--doc-brand);
+}
+
+/* -- Подвал -------------------------------------------------------------- */
+.doc-note {
+  margin-top: 28px;
+  padding-top: 12px;
+  border-top: 1px solid var(--doc-line-soft);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--doc-muted);
+}
+
+.doc-note + .doc-note {
+  margin-top: 10px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.doc-sign {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  margin-top: 32px;
+}
+
+.doc-sign__line {
+  flex: 1 1 200px;
+  padding-top: 20px;
+  border-top: 1px solid var(--doc-ink);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--doc-muted);
+}
+
+/* ============================================================================
+   Печать
+   ========================================================================== */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
+@media print {
+  body {
+    padding: 0;
+    background: #fff;
+    font-size: 10.5pt;
+  }
+
+  .doc-toolbar {
+    display: none !important;
+  }
+
+  .doc-page {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .doc-section {
+    break-inside: avoid;
+  }
+
+  .doc-table tr,
+  .doc-totals tr,
+  .doc-kv tr {
+    break-inside: avoid;
+  }
+
+  .doc-table th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .doc-note,
+  .doc-sign {
+    break-inside: avoid;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 700px) {
+  body {
+    padding: 16px 8px 40px;
+  }
+
+  .doc-page {
+    padding: 24px 20px 32px;
+  }
+
+  .doc-head__id {
+    text-align: left;
+  }
+
+  .doc-totals {
+    max-width: none;
+  }
+}

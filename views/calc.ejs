@@ -1,96 +1,158 @@
 <%- include('partials/header', { title: 'Подбор холодильного агрегата' }) %>
 
-<h1>Подбор холодильного агрегата</h1>
-
-<% const isAdmin = user.role === 'admin'; %>
 <%
-  // Сохранение выбранных значений формы после расчета
+  // Сохранение выбранных значений формы после расчёта.
+  const isAdmin = user.role === 'admin';
   const f = form || {};
   const auto = f.auto || {};
   const manual = f.manual || {};
   const selMode = f.mode === 'manual' ? 'manual' : 'auto';
   const selAutoType = auto.type || f.autoType || 'any';
   const selAutoMfr = String(auto.manufacturerId || f.autoManufacturer || 'any');
+  const selAutoMaxQty = String(auto.maxQty || f.autoMaxQty || 3);
   const selManualType = manual.type || f.manualType || 'any';
   const selManualMfr = String(manual.manufacturerId || f.manualManufacturer || 'any');
   const selCompQty = manual.qty || f.compressorQty || 1;
   const selOpts = Array.isArray(f.selectedOptions) ? f.selectedOptions
                 : (f.options ? (Array.isArray(f.options) ? f.options : [f.options]) : []);
-%>
-<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
-<form method="POST" action="/calc" id="calcForm">
-  <div class="grid-2">
-    <!-- ===== Исходные данные ===== -->
-    <div class="card">
-      <h3 class="card-title">1. Исходные данные</h3>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Хладагент *</label>
-          <select name="refrigerant" id="refrigerantSelect" required>
-            <% refrigerants.forEach(r => { %>
-              <option value="<%= r.code %>" <%= form.refrigerant === r.code ? 'selected' : '' %>><%= r.code %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Требуемая мощность, кВт *</label>
-          <input type="number" name="requiredKw" step="0.1" min="0.1" required
-                 value="<%= form.requiredKw || '' %>">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Температура кипения, °C *</label>
-          <input type="number" name="tEvap" step="1" required value="<%= form.tEvap != null ? form.tEvap : -10 %>">
-        </div>
-        <div class="form-group">
-          <label>Температура конденсации, °C *</label>
-          <input type="number" name="tCond" step="1" required value="<%= form.tCond != null ? form.tCond : 45 %>">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Перегрев, К</label>
-          <input type="number" name="dTsh" step="1" value="<%= form.dTsh != null ? form.dTsh : 10 %>">
-        </div>
-        <div class="form-group">
-          <label>Переохлаждение, К</label>
-          <input type="number" name="dTsc" step="1" value="<%= form.dTsc != null ? form.dTsc : 0 %>">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Корпус</label>
-        <select name="housingCode">
-          <option value="">— не выбран —</option>
-          <% housings.forEach(h => { %>
-            <option value="<%= h.code %>" <%= form.housingCode === h.code ? 'selected' : '' %>><%= h.name %><% if (isAdmin) { %> (<%= h.price_eur %> EUR)<% } %></option>
-          <% }) %>
-        </select>
+  const COMPRESSOR_TYPES = [
+    { value: 'any', label: 'Любой' },
+    { value: 'scroll', label: 'Спиральный' },
+    { value: 'screw', label: 'Винтовой' },
+    { value: 'recip', label: 'Поршневой' }
+  ];
+  const typeLabel = (t) => (COMPRESSOR_TYPES.find(x => x.value === t) || {}).label || t;
+
+  const PIPE_LINES = [
+    { key: 'suction', label: 'Всасывание' },
+    { key: 'discharge', label: 'Нагнетание' },
+    { key: 'liquid', label: 'Жидкость' }
+  ];
+%>
+
+<div class="page-head">
+  <div class="page-head__main">
+    <span class="kicker">Подбор оборудования</span>
+    <h1>Холодильный агрегат</h1>
+    <p class="page-head__lead">
+      Задайте режим работы и требуемую мощность — сервис подберёт компрессоры по полиномам
+      AHRI/EN12900, рассчитает трубопроводы, виброгасители и соберёт спецификацию.
+    </p>
+  </div>
+</div>
+
+<% if (error) { %>
+  <div class="alert alert--error u-mb-6" role="alert">
+    <span class="alert__icon"><%- include('partials/icon', { name: 'alert' }) %></span>
+    <div class="alert__body"><%= error %></div>
+  </div>
+<% } %>
+
+<form method="POST" action="/calc" id="calcForm" class="stack">
+
+  <!-- ======================= 01. Режим работы ======================= -->
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__num">01</span>
+      <div class="panel__titles">
+        <h2 class="panel__title">Режим работы</h2>
+        <p class="panel__sub">Хладагент, температуры и требуемая холодопроизводительность</p>
       </div>
     </div>
 
-    <!-- ===== Компрессоры ===== -->
-    <div class="card">
-      <h3 class="card-title">2. Компрессоры</h3>
-      <div class="form-group">
-        <label class="radio"><input type="radio" name="mode" value="auto" <%= selMode === 'auto' ? 'checked' : '' %> onchange="toggleMode()"> Автоподбор по мощности</label>
-        <label class="radio"><input type="radio" name="mode" value="manual" <%= selMode === 'manual' ? 'checked' : '' %> onchange="toggleMode()"> Ручной выбор</label>
+    <div class="panel__body">
+      <div class="field-grid">
+        <div class="field">
+          <label class="field__label" for="refrigerantSelect">Хладагент <span class="field__req">*</span></label>
+          <select name="refrigerant" id="refrigerantSelect" required>
+            <% refrigerants.forEach(r => { %>
+              <option value="<%= r.code %>" <%= f.refrigerant === r.code ? 'selected' : '' %>><%= r.code %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="requiredKw">Требуемая мощность, кВт <span class="field__req">*</span></label>
+          <input type="number" id="requiredKw" name="requiredKw" step="0.1" min="0.1" required
+                 value="<%= f.requiredKw || '' %>" placeholder="например 45">
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="tEvap">Температура кипения, °C <span class="field__req">*</span></label>
+          <input type="number" id="tEvap" name="tEvap" step="1" required
+                 value="<%= f.tEvap != null ? f.tEvap : -10 %>">
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="tCond">Температура конденсации, °C <span class="field__req">*</span></label>
+          <input type="number" id="tCond" name="tCond" step="1" required
+                 value="<%= f.tCond != null ? f.tCond : 45 %>">
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="dTsh">Перегрев, К</label>
+          <input type="number" id="dTsh" name="dTsh" step="1"
+                 value="<%= f.dTsh != null ? f.dTsh : 10 %>">
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="dTsc">Переохлаждение, К</label>
+          <input type="number" id="dTsc" name="dTsc" step="1"
+                 value="<%= f.dTsc != null ? f.dTsc : 0 %>">
+        </div>
+
+        <div class="field field--wide">
+          <label class="field__label" for="housingCode">Корпус</label>
+          <select name="housingCode" id="housingCode">
+            <option value="">— не выбран —</option>
+            <% housings.forEach(h => { %>
+              <option value="<%= h.code %>" <%= f.housingCode === h.code ? 'selected' : '' %>>
+                <%= h.name %><% if (isAdmin) { %> — <%= h.price_eur %> EUR<% } %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- ======================= 02. Компрессоры ======================= -->
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__num">02</span>
+      <div class="panel__titles">
+        <h2 class="panel__title">Компрессоры</h2>
+        <p class="panel__sub">Автоматический подбор по мощности либо ручной выбор модели</p>
+      </div>
+    </div>
+
+    <div class="panel__body">
+      <div class="choice-set" role="radiogroup" aria-label="Способ подбора компрессоров">
+        <label class="choice">
+          <input type="radio" name="mode" value="auto" onchange="toggleMode()"
+                 <%= selMode === 'auto' ? 'checked' : '' %>>
+          Автоподбор по мощности
+        </label>
+        <label class="choice">
+          <input type="radio" name="mode" value="manual" onchange="toggleMode()"
+                 <%= selMode === 'manual' ? 'checked' : '' %>>
+          Ручной выбор модели
+        </label>
       </div>
 
-      <div id="autoBlock">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Тип компрессора</label>
+      <div id="autoBlock" class="mode-block">
+        <div class="field-grid field-grid--3">
+          <div class="field">
+            <label class="field__label" for="autoType">Тип компрессора</label>
             <select name="autoType" id="autoType">
-              <option value="any" <%= selAutoType === 'any' ? 'selected' : '' %>>Любой</option>
-              <option value="scroll" <%= selAutoType === 'scroll' ? 'selected' : '' %>>Спиральный</option>
-              <option value="screw" <%= selAutoType === 'screw' ? 'selected' : '' %>>Винтовой</option>
-              <option value="recip" <%= selAutoType === 'recip' ? 'selected' : '' %>>Поршневой</option>
+              <% COMPRESSOR_TYPES.forEach(t => { %>
+                <option value="<%= t.value %>" <%= selAutoType === t.value ? 'selected' : '' %>><%= t.label %></option>
+              <% }) %>
             </select>
           </div>
-          <div class="form-group">
-            <label>Производитель</label>
+
+          <div class="field">
+            <label class="field__label" for="autoManufacturer">Производитель</label>
             <select name="autoManufacturer" id="autoManufacturer">
               <option value="any" <%= selAutoMfr === 'any' ? 'selected' : '' %>>Любой</option>
               <% manufacturers.forEach(m => { %>
@@ -98,28 +160,31 @@
               <% }) %>
             </select>
           </div>
-        </div>
-        <div class="form-group">
-          <label>Макс. количество компрессоров</label>
-          <select name="autoMaxQty">
-            <option>1</option><option>2</option><option selected>3</option><option>4</option>
-          </select>
+
+          <div class="field">
+            <label class="field__label" for="autoMaxQty">Макс. компрессоров</label>
+            <select name="autoMaxQty" id="autoMaxQty">
+              <% [1, 2, 3, 4].forEach(n => { %>
+                <option value="<%= n %>" <%= selAutoMaxQty === String(n) ? 'selected' : '' %>><%= n %></option>
+              <% }) %>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div id="manualBlock" style="display:none">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Тип компрессора</label>
+      <div id="manualBlock" class="mode-block is-hidden">
+        <div class="field-grid">
+          <div class="field">
+            <label class="field__label" for="manualType">Тип компрессора</label>
             <select name="manualType" id="manualType">
-              <option value="any" <%= selManualType === 'any' ? 'selected' : '' %>>Любой</option>
-              <option value="scroll" <%= selManualType === 'scroll' ? 'selected' : '' %>>Спиральный</option>
-              <option value="screw" <%= selManualType === 'screw' ? 'selected' : '' %>>Винтовой</option>
-              <option value="recip" <%= selManualType === 'recip' ? 'selected' : '' %>>Поршневой</option>
+              <% COMPRESSOR_TYPES.forEach(t => { %>
+                <option value="<%= t.value %>" <%= selManualType === t.value ? 'selected' : '' %>><%= t.label %></option>
+              <% }) %>
             </select>
           </div>
-          <div class="form-group">
-            <label>Производитель</label>
+
+          <div class="field">
+            <label class="field__label" for="manualManufacturer">Производитель</label>
             <select name="manualManufacturer" id="manualManufacturer">
               <option value="any" <%= selManualMfr === 'any' ? 'selected' : '' %>>Любой</option>
               <% manufacturers.forEach(m => { %>
@@ -127,166 +192,327 @@
               <% }) %>
             </select>
           </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Модель</label>
-            <select name="compressorId" id="compressorSelect"><option value="">— выберите параметры —</option></select>
+
+          <div class="field">
+            <label class="field__label" for="compressorSelect">Модель</label>
+            <select name="compressorId" id="compressorSelect">
+              <option value="">— выберите параметры —</option>
+            </select>
           </div>
-          <div class="form-group">
-            <label>Количество</label>
-            <input type="number" name="compressorQty" value="<%= selCompQty %>" min="1" max="6">
+
+          <div class="field">
+            <label class="field__label" for="compressorQty">Количество</label>
+            <input type="number" id="compressorQty" name="compressorQty"
+                   value="<%= selCompQty %>" min="1" max="6">
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ===== Опции ===== -->
-  <div class="card">
-    <h3 class="card-title">3. Опции</h3>
-    <p class="hint">Обязательные опции включены автоматически. Опции, рекомендованные для выбранного режима, отмечены значком ★.</p>
-    <div class="options-grid">
-      <% options.forEach(o => { %>
-        <label class="option-item">
-          <input type="checkbox" name="options" value="<%= o.code %>"
-                 <%= (o.mandatory || selOpts.includes(o.code)) ? 'checked' : '' %> <%= o.mandatory ? 'disabled' : '' %>>
-          <%= o.name %>
-          <% if (o.mandatory) { %><span class="badge">обязательная</span><% } %>
-        </label>
-      <% }) %>
+  <!-- ======================= 03. Опции ======================= -->
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__num">03</span>
+      <div class="panel__titles">
+        <h2 class="panel__title">Опции</h2>
+        <p class="panel__sub">Обязательные включены автоматически и отмечены ниже</p>
+      </div>
     </div>
-  </div>
 
-  <div class="actions">
-    <button type="submit" class="btn btn-primary btn-lg">Рассчитать</button>
+    <div class="panel__body">
+      <div class="options-grid">
+        <% options.forEach(o => { %>
+          <label class="option-item">
+            <input type="checkbox" name="options" value="<%= o.code %>"
+                   <%= (o.mandatory || selOpts.includes(o.code)) ? 'checked' : '' %>
+                   <%= o.mandatory ? 'disabled' : '' %>>
+            <span class="option-item__text"><%= o.name %></span>
+            <% if (o.mandatory) { %><span class="badge">обязательная</span><% } %>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+
+  <div class="action-bar">
+    <button type="submit" class="btn btn--primary btn--lg">
+      <%- include('partials/icon', { name: 'calculator' }) %>Рассчитать
+    </button>
+    <span class="action-bar__note">Расчёт выполняется по полиномам AHRI/EN12900 из каталога.</span>
   </div>
 </form>
-
 <% if (result) { %>
-  <!-- ==================== РЕЗУЛЬТАТ ==================== -->
-  <h2>Результаты расчета</h2>
+  <!-- ============================ РЕЗУЛЬТАТ ============================ -->
+  <div class="section-head">
+    <div>
+      <span class="kicker">Результат</span>
+      <h2>Расчёт холодильного агрегата</h2>
+    </div>
+    <span class="admin-note">
+      Хладагент <strong><%= result.input.refrigerant %></strong>
+      · режим <strong><%= result.input.tEvap %> / <%= result.input.tCond %> °C</strong>
+    </span>
+  </div>
 
   <% if (result.warnings && result.warnings.length) { %>
-    <div class="alert alert-warn">
-      <% result.warnings.forEach(w => { %><div>★ <%= w %></div><% }) %>
+    <div class="alert alert--warn u-mb-6" role="status">
+      <span class="alert__icon"><%- include('partials/icon', { name: 'alert' }) %></span>
+      <div class="alert__body">
+        <p class="alert__title">Замечания к расчёту</p>
+        <ul>
+          <% result.warnings.forEach(w => { %><li><%= w %></li><% }) %>
+        </ul>
+      </div>
     </div>
   <% } %>
 
-  <!-- Характеристики -->
-  <div class="grid-2">
-    <div class="card">
-      <h3 class="card-title">Характеристики агрегата</h3>
+  <div class="kpi-grid">
+    <div class="stat">
+      <div class="stat__label">Холодопроизводительность</div>
+      <div class="stat__value"><%= result.selection.totals.q_kw %><span class="stat__unit">кВт</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat__label">Потребляемая мощность</div>
+      <div class="stat__value"><%= result.selection.totals.power_kw %><span class="stat__unit">кВт</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat__label">COP</div>
+      <div class="stat__value"><%= result.selection.totals.cop %></div>
+    </div>
+    <div class="stat">
+      <div class="stat__label">Массовый расход</div>
+      <div class="stat__value"><%= result.selection.totals.mass_flow_kgh %><span class="stat__unit">кг/ч</span></div>
+    </div>
+  </div>
+
+  <div class="grid-2 u-mt-6">
+    <section class="card">
+      <h3 class="card__title">Характеристики агрегата</h3>
       <table class="kv">
-        <tr><td>Хладагент</td><td><b><%= result.input.refrigerant %></b></td></tr>
-        <tr><td>t кипения / t конденсации</td><td><%= result.input.tEvap %> / <%= result.input.tCond %> °C</td></tr>
-        <tr><td>Холодопроизводительность</td><td><b><%= result.selection.totals.q_kw %> кВт</b></td></tr>
-        <tr><td>Потребляемая мощность</td><td><%= result.selection.totals.power_kw %> кВт</td></tr>
-        <tr><td>Теплопроизводительность</td><td><%= result.selection.totals.heat_kw %> кВт</td></tr>
-        <tr><td>COP</td><td><%= result.selection.totals.cop %></td></tr>
-        <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
-        <tr><td>Суммарный ток</td><td><%= result.selection.totals.current_a %> А</td></tr>
+        <tbody>
+          <tr><td>Хладагент</td><td><%= result.input.refrigerant %></td></tr>
+          <tr><td>t кипения / t конденсации</td><td><%= result.input.tEvap %> / <%= result.input.tCond %> °C</td></tr>
+          <tr><td>Перегрев / переохлаждение</td><td><%= result.input.dTsh %> / <%= result.input.dTsc %> К</td></tr>
+          <tr><td>Холодопроизводительность</td><td><%= result.selection.totals.q_kw %> кВт</td></tr>
+          <tr><td>Потребляемая мощность</td><td><%= result.selection.totals.power_kw %> кВт</td></tr>
+          <tr><td>Теплопроизводительность</td><td><%= result.selection.totals.heat_kw %> кВт</td></tr>
+          <tr><td>COP</td><td><%= result.selection.totals.cop %></td></tr>
+          <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
+          <tr><td>Суммарный ток</td><td><%= result.selection.totals.current_a %> А</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h3 class="card__title">Свойства хладагента — точки цикла</h3>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Точка</th>
+              <th class="num">t, °C</th>
+              <th class="num">P, бар</th>
+              <th class="num">ρ, кг/м³</th>
+              <th class="num">h, кДж/кг</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% ['suction', 'discharge', 'liquid', 'throttle'].forEach(k => { const p = result.cycle[k]; %>
+              <tr>
+                <td><%= p.label %></td>
+                <td class="num"><%= p.t %></td>
+                <td class="num"><%= p.p %></td>
+                <td class="num"><%= p.rho %></td>
+                <td class="num"><%= p.h %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel panel--flush u-mt-6">
+    <div class="list-head">
+      <span class="list-head__title">Компрессоры</span>
+      <span class="list-head__meta">Позиций: <b class="num"><%= result.selection.items.length %></b></span>
+    </div>
+    <div class="table-wrap table-wrap--plain">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Производитель</th>
+            <th>Модель</th>
+            <th>Тип</th>
+            <th class="num">Кол-во</th>
+            <th class="num">Q, кВт</th>
+            <th class="num">N, кВт</th>
+            <th class="num">I, А</th>
+            <th class="num">ṁ, кг/ч</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% result.selection.items.forEach(c => { %>
+            <tr>
+              <td><%= c.manufacturer %></td>
+              <td class="cell-code"><%= c.model %></td>
+              <td class="muted"><%= typeLabel(c.type) %></td>
+              <td class="num"><%= c.qty %></td>
+              <td class="num"><%= c.q_kw %></td>
+              <td class="num"><%= c.power_kw %></td>
+              <td class="num"><%= c.current_a %></td>
+              <td class="num"><%= c.mass_flow_kgh %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel u-mt-6">
+    <div class="panel__head">
+      <div class="panel__titles">
+        <h3 class="panel__title">Трубопроводы — магистральные линии</h3>
+        <p class="panel__sub">Подбор дюймовых диаметров по рекомендованным скоростям</p>
+      </div>
+    </div>
+    <div class="table-wrap table-inset">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Линия</th>
+            <th class="num">Расход, кг/ч</th>
+            <th class="num">V̇, м³/ч</th>
+            <th class="num">Ø, "</th>
+            <th>Труба, мм</th>
+            <th class="num">Скорость, м/с</th>
+            <th>Проверка</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% PIPE_LINES.forEach(line => {
+               const p = result.piping.common[line.key];
+               const r = p.recommended; %>
+            <tr>
+              <td><%= line.label %></td>
+              <td class="num"><%= p.massFlowKgh %></td>
+              <td class="num"><%= p.vdot_m3h %></td>
+              <td class="num num--strong"><%= r.size_in %></td>
+              <td class="num">Ø<%= r.od_mm %>×<%= r.wall_mm %></td>
+              <td class="num"><%= r.v %></td>
+              <td>
+                <% if (r.status === 'ok') { %>
+                  <span class="badge badge--ok">в норме</span>
+                <% } else { %>
+                  <span class="badge badge--warn">вне диапазона</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
       </table>
     </div>
 
-    <div class="card">
-      <h3 class="card-title">Свойства хладагента (точки цикла)</h3>
-      <table class="table">
-        <tr><th>Точка</th><th>t, °C</th><th>P, бар</th><th>ρ, кг/м³</th><th>h, кДж/кг</th></tr>
-        <% ['suction','discharge','liquid','throttle'].forEach(k => { const p = result.cycle[k]; %>
-          <tr><td><%= p.label %></td><td><%= p.t %></td><td><%= p.p %></td><td><%= p.rho %></td><td><%= p.h %></td></tr>
-        <% }) %>
-      </table>
-    </div>
-  </div>
-
-  <!-- Компрессоры -->
-  <div class="card">
-    <h3 class="card-title">Компрессоры</h3>
-    <table class="table">
-      <tr><th>Производитель</th><th>Модель</th><th>Тип</th><th>Кол-во</th><th>Q, кВт</th><th>N, кВт</th><th>I, А</th><th>ṁ, кг/ч</th></tr>
-      <% result.selection.items.forEach(c => { %>
-        <tr>
-          <td><%= c.manufacturer %></td><td><%= c.model %></td>
-          <td><%= c.type === 'scroll' ? 'Спиральный' : c.type === 'screw' ? 'Винтовой' : 'Поршневой' %></td>
-          <td><%= c.qty %></td>
-          <td><%= c.q_kw %></td><td><%= c.power_kw %></td><td><%= c.current_a %></td>
-          <td><%= c.mass_flow_kgh %></td>
-        </tr>
-      <% }) %>
-    </table>
-  </div>
-
-  <!-- Трубопроводы -->
-  <div class="card">
-    <h3 class="card-title">Трубопроводы (магистральные)</h3>
-    <table class="table">
-      <tr><th>Линия</th><th>Расход, кг/ч</th><th>V̇, м³/ч</th><th>Рекоменд. Ø, "</th><th>Скорость, м/с</th><th>Допустимо</th></tr>
-      <% ['suction','discharge','liquid'].forEach(k => { const p = result.piping.common[k]; const r = p.recommended; %>
-        <tr>
-          <td><%= k === 'suction' ? 'Всасывание' : k === 'discharge' ? 'Нагнетание' : 'Жидкость' %></td>
-          <td><%= p.massFlowKgh %></td><td><%= p.vdot_m3h %></td>
-          <td><b><%= r.size_in %></b> (Ø<%= r.od_mm %>×<%= r.wall_mm %>)</td>
-          <td><%= r.v %></td>
-          <td><%= r.status === 'ok' ? '✓' : '⚠ вне диапазона' %></td>
-        </tr>
-      <% }) %>
-    </table>
-    <details>
-      <summary>Индивидуальные линии компрессоров</summary>
-      <% result.piping.individual.forEach(ind => { %>
-        <p><b><%= ind.label %></b>: всасывание <%= ind.suction.recommended.size_in %>" (<%= ind.suction.recommended.v %> м/с),
-           нагнетание <%= ind.discharge.recommended.size_in %>" (<%= ind.discharge.recommended.v %> м/с)</p>
-      <% }) %>
-    </details>
-  </div>
-
-  <!-- Виброгасители -->
-  <% if (result.vibration) { %>
-    <div class="card">
-      <h3 class="card-title">Виброгасители (индивидуально на каждый компрессор)</h3>
-      <%- include('partials/vibration-table', { vibration: result.vibration, isAdmin }) %>
-    </div>
-  <% } %>
-
-  <!-- Спецификация -->
-  <div class="card">
-    <h3 class="card-title">Спецификация</h3>
-    <table class="table">
-      <tr><th>№</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th>
-        <% if (isAdmin) { %><th>Цена, EUR</th><th>Сумма, EUR</th><% } %>
-      </tr>
-      <% result.bom.forEach((it, i) => { %>
-        <tr>
-          <td><%= i + 1 %></td><td><%= it.article %></td><td><%= it.name %></td>
-          <td><%= it.qty %></td>
-          <% if (isAdmin) { %><td><%= it.unit_price_eur %></td><td><%= it.total_price_eur %></td><% } %>
-        </tr>
-      <% }) %>
-    </table>
-  </div>
-
-  <!-- Стоимость -->
-  <div class="card price-card">
-    <h3 class="card-title">Стоимость</h3>
-    <% if (isAdmin) { %>
-      <table class="kv">
-        <tr><td>Материалы</td><td><%= result.totals.materials_eur %> EUR</td></tr>
-        <tr><td>Мелочь (<%= result.totals.petty_pct %>%)</td><td><%= result.totals.petty_eur %> EUR</td></tr>
-        <tr><td>Работы (<%= result.totals.labor_pct %>%)</td><td><%= result.totals.labor_eur %> EUR</td></tr>
-        <tr><td>Профит (<%= result.totals.profit_pct %>%)</td><td><%= result.totals.profit_eur %> EUR</td></tr>
-        <tr class="total-row"><td>Итого без НДС</td><td><%= result.totals.subtotal_eur %> EUR</td></tr>
-        <% if (result.totals.discount_percent > 0) { %>
-          <tr><td>Скидка <%= result.totals.discount_percent %>%</td><td>−<%= result.totals.discount_amount_eur %> EUR</td></tr>
-        <% } %>
-      </table>
+    <% if (result.piping.individual && result.piping.individual.length) { %>
+      <div class="panel__body panel__body--continuation">
+        <details class="disclosure">
+          <summary>Индивидуальные линии компрессоров</summary>
+          <div class="disclosure__body">
+            <div class="lines-list">
+              <% result.piping.individual.forEach(ind => { %>
+                <div class="line-item">
+                  <span class="line-item__title"><%= ind.label %></span>
+                  <span class="line-item__meta">
+                    всасывание <%= ind.suction.recommended.size_in %>" (<%= ind.suction.recommended.v %> м/с)
+                    · нагнетание <%= ind.discharge.recommended.size_in %>" (<%= ind.discharge.recommended.v %> м/с)
+                  </span>
+                  <span class="line-item__value">
+                    <%= ind.suction.recommended.size_in %> / <%= ind.discharge.recommended.size_in %>"
+                  </span>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        </details>
+      </div>
     <% } %>
-    <table class="kv">
-      <tr class="grand-row"><td>Цена агрегата (без НДС)</td><td><%= result.totals.total_eur %> EUR</td></tr>
-    </table>
-  </div>
+  </section>
 
-  <!-- Сохранение в КП -->
+  <% if (result.vibration) { %>
+    <section class="panel panel--flush u-mt-6">
+      <div class="list-head">
+        <span class="list-head__title">Виброгасители — индивидуально на каждый компрессор</span>
+      </div>
+      <%- include('partials/vibration-table', { vibration: result.vibration, isAdmin }) %>
+    </section>
+  <% } %>
+
+  <section class="panel panel--flush u-mt-6">
+    <div class="list-head">
+      <span class="list-head__title">Спецификация оборудования</span>
+      <span class="list-head__meta">Позиций: <b class="num"><%= result.bom.length %></b></span>
+    </div>
+    <div class="table-wrap table-wrap--plain">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="num">№</th>
+            <th>Артикул</th>
+            <th>Наименование</th>
+            <th class="num">Кол-во</th>
+            <% if (isAdmin) { %>
+              <th class="num">Цена, EUR</th>
+              <th class="num">Сумма, EUR</th>
+            <% } %>
+            <th>Раздел</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% result.bom.forEach((it, i) => { %>
+            <tr>
+              <td class="num"><%= i + 1 %></td>
+              <td class="cell-code"><%= it.article %></td>
+              <td class="cell-name"><%= it.name %></td>
+              <td class="num"><%= it.qty %></td>
+              <% if (isAdmin) { %>
+                <td class="num"><%= it.unit_price_eur %></td>
+                <td class="num"><%= it.total_price_eur %></td>
+              <% } %>
+              <td class="muted"><%= it.section %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel u-mt-6">
+    <div class="panel__head">
+      <div class="panel__titles">
+        <h3 class="panel__title">Стоимость агрегата</h3>
+        <p class="panel__sub">Все цены в EUR без НДС</p>
+      </div>
+    </div>
+    <div class="panel__body">
+      <table class="kv totals-narrow">
+        <tbody>
+          <% if (isAdmin) { %>
+            <tr><td>Материалы</td><td><%= result.totals.materials_eur %> EUR</td></tr>
+            <tr><td>Мелочь (<%= result.totals.petty_pct %>%)</td><td><%= result.totals.petty_eur %> EUR</td></tr>
+            <tr><td>Работы (<%= result.totals.labor_pct %>%)</td><td><%= result.totals.labor_eur %> EUR</td></tr>
+            <tr><td>Профит (<%= result.totals.profit_pct %>%)</td><td><%= result.totals.profit_eur %> EUR</td></tr>
+            <tr class="total-row"><td>Итого без НДС</td><td><%= result.totals.subtotal_eur %> EUR</td></tr>
+            <% if (result.totals.discount_percent > 0) { %>
+              <tr><td>Скидка <%= result.totals.discount_percent %>%</td><td>−<%= result.totals.discount_amount_eur %> EUR</td></tr>
+            <% } %>
+          <% } %>
+          <tr class="grand-row"><td>Цена агрегата (без НДС)</td><td><%= result.totals.total_eur %> EUR</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <form method="POST" action="/quotes/save" id="saveForm">
     <% Object.entries({
       refrigerant: result.input.refrigerant, tEvap: result.input.tEvap, tCond: result.input.tCond,
@@ -301,8 +527,14 @@
     <% result.input.selectedOptions.forEach(o => { %>
       <input type="hidden" name="options" value="<%= o %>">
     <% }) %>
-    <div class="actions">
-      <button type="submit" class="btn btn-success btn-lg">💾 Сохранить как КП</button>
+
+    <div class="action-bar">
+      <button type="submit" class="btn btn--success btn--lg">
+        <%- include('partials/icon', { name: 'save' }) %>Сохранить как КП
+      </button>
+      <span class="action-bar__note">
+        Черновик коммерческого предложения появится в разделе «Мои КП».
+      </span>
     </div>
   </form>
 <% } %>
@@ -310,22 +542,27 @@
 <script>
 function toggleMode() {
   const mode = document.querySelector('input[name="mode"]:checked').value;
-  document.getElementById('autoBlock').style.display = mode === 'auto' ? '' : 'none';
-  document.getElementById('manualBlock').style.display = mode === 'manual' ? '' : 'none';
+  document.getElementById('autoBlock').classList.toggle('is-hidden', mode !== 'auto');
+  document.getElementById('manualBlock').classList.toggle('is-hidden', mode !== 'manual');
   if (mode === 'manual') loadCompressors();
 }
+
 function loadCompressors(preserveId) {
   const ref = document.getElementById('refrigerantSelect').value;
   const type = document.getElementById('manualType').value;
   const mfr = document.getElementById('manualManufacturer').value;
-  const params = new URLSearchParams({ refrigerant: ref, type, manufacturer: mfr });
+  const params = new URLSearchParams({ refrigerant: ref, type: type, manufacturer: mfr });
+
   fetch('/calc/api/compressors?' + params.toString())
     .then(r => r.json())
     .then(d => {
       const sel = document.getElementById('compressorSelect');
       sel.innerHTML = '';
       if (!d.compressors.length) {
-        sel.innerHTML = '<option value="">— нет моделей по фильтру —</option>';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '— нет моделей по фильтру —';
+        sel.appendChild(opt);
         return;
       }
       d.compressors.forEach(c => {
@@ -335,19 +572,27 @@ function loadCompressors(preserveId) {
         if (preserveId && String(c.id) === String(preserveId)) opt.selected = true;
         sel.appendChild(opt);
       });
+    })
+    .catch(() => {
+      const sel = document.getElementById('compressorSelect');
+      sel.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— не удалось загрузить список моделей —';
+      sel.appendChild(opt);
     });
 }
-['refrigerantSelect','manualType','manualManufacturer'].forEach(id => {
+
+['refrigerantSelect', 'manualType', 'manualManufacturer'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (document.querySelector('input[name="mode"]:checked').value === 'manual') loadCompressors();
   });
 });
-// При загрузке страницы, если выбран ручной режим — подгружаем модели,
-// сохраняя ранее выбранную модель
+
 document.addEventListener('DOMContentLoaded', () => {
   toggleMode();
   if (document.querySelector('input[name="mode"]:checked').value === 'manual') {
-    loadCompressors('<%= typeof manual !== "undefined" ? (manual.compressorId || "") : "" %>');
+    loadCompressors('<%= manual.compressorId || "" %>');
   }
 });
 </script>

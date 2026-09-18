@@ -1,62 +1,107 @@
 <%- include('partials/header', { title: 'Пользователи' }) %>
 
-<h1>Пользователи</h1>
-<% if (message) { %><div class="alert alert-success"><%= message %></div><% } %>
+<%
+  const ROLE_LABELS = { admin: 'Администратор', client: 'Клиент' };
+  const STATUS_LABELS = { pending: 'Ожидает', active: 'Активен', rejected: 'Отклонён' };
+  const roleLabel = (r) => ROLE_LABELS[r] || r;
+  const statusLabel = (s) => STATUS_LABELS[s] || s;
+  const pendingCount = users.filter(u => u.status === 'pending').length;
+%>
 
-<table class="table">
-  <tr><th>ID</th><th>Email</th><th>Имя</th><th>Компания</th><th>Роль</th><th>Статус</th><th>Скидка, %</th><th>Действия</th></tr>
-  <% users.forEach(u => { %>
-    <tr>
-      <td><%= u.id %></td>
-      <td><%= u.email %></td>
-      <td><%= u.name %></td>
-      <td><%= u.company || '—' %></td>
-      <td><%= u.role %></td>
-      <td>
-        <span class="status status-<%= u.status %>"><%= u.status %></span>
-      </td>
-      <td>
-        <% if (u.role === 'client') { %>
-          <form method="POST" action="/admin/users/<%= u.id %>/discount" class="inline-form disc-form">
-            <input type="number" name="discount" value="<%= u.discount_percent %>" min="0" max="100" step="1" style="width:70px">
-            <button type="submit" class="btn btn-primary btn-sm">✓</button>
-          </form>
-        <% } else { %>—<% } %>
-      </td>
-      <td>
-        <% if (u.role === 'client') { %>
-          <% if (u.status === 'pending') { %>
-            <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
-              <input type="hidden" name="status" value="active">
-              <button type="submit" class="btn btn-success btn-sm">Одобрить</button>
-            </form>
-            <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
-              <input type="hidden" name="status" value="rejected">
-              <button type="submit" class="btn btn-danger btn-sm">Отклонить</button>
-            </form>
-          <% } else if (u.status === 'active') { %>
-            <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
-              <input type="hidden" name="status" value="rejected">
-              <button type="submit" class="btn btn-danger btn-sm">Блокировать</button>
-            </form>
-          <% } else { %>
-            <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
-              <input type="hidden" name="status" value="active">
-              <button type="submit" class="btn btn-success btn-sm">Разблокировать</button>
-            </form>
-          <% } %>
-        <% } %>
-      </td>
-    </tr>
-  <% }) %>
-</table>
+<div class="page-head">
+  <div class="page-head__main">
+    <span class="kicker">Администрирование</span>
+    <h1>Пользователи</h1>
+    <p class="page-head__lead">
+      Подтверждение доступа, блокировка и индивидуальная скидка для клиентов.
+    </p>
+  </div>
+  <div class="page-head__aside">
+    <span class="admin-note">
+      Всего: <strong><%= users.length %></strong>
+      · ожидают подтверждения: <strong><%= pendingCount %></strong>
+    </span>
+  </div>
+</div>
 
-<style>
-.status { padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; }
-.status-pending { background: #fef3c7; color: #92400e; }
-.status-active { background: #d1fae5; color: #065f46; }
-.status-rejected { background: #fee2e2; color: #991b1b; }
-.disc-form { display: inline-flex; gap: 4px; }
-</style>
+<% if (message) { %>
+  <div class="alert alert--success u-mb-6" role="status">
+    <span class="alert__icon"><%- include('partials/icon', { name: 'check-circle' }) %></span>
+    <div class="alert__body"><%= message %></div>
+  </div>
+<% } %>
+
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Email</th>
+        <th>Имя</th>
+        <th>Компания</th>
+        <th>Статус</th>
+        <th class="num">Скидка, %</th>
+        <th class="cell-actions">Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(u => { %>
+        <tr>
+          <td><%= u.email %></td>
+          <td>
+            <span class="user-cell__name"><%= u.name %></span>
+            <span class="user-cell__role"><%= roleLabel(u.role) %></span>
+          </td>
+          <td><%= u.company || '—' %></td>
+          <td>
+            <span class="status status-<%= u.status %>"><%= statusLabel(u.status) %></span>
+          </td>
+          <td class="num">
+            <% if (u.role === 'client') { %>
+              <form method="POST" action="/admin/users/<%= u.id %>/discount" class="cell-form">
+                <label class="visually-hidden" for="discount<%= u.id %>">Скидка для <%= u.name %>, %</label>
+                <input type="number" id="discount<%= u.id %>" name="discount" class="input--xs"
+                       value="<%= u.discount_percent %>" min="0" max="100" step="1">
+                <button type="submit" class="btn btn--secondary btn--icon btn--sm" title="Сохранить скидку">
+                  <%- include('partials/icon', { name: 'check' }) %>
+                  <span class="visually-hidden">Сохранить скидку</span>
+                </button>
+              </form>
+            <% } else { %>
+              —
+            <% } %>
+          </td>
+          <td class="cell-actions">
+            <% if (u.role === 'client') { %>
+              <span class="cell-form">
+                <% if (u.status === 'pending') { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
+                    <input type="hidden" name="status" value="active">
+                    <button type="submit" class="btn btn--success btn--sm">Одобрить</button>
+                  </form>
+                  <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
+                    <input type="hidden" name="status" value="rejected">
+                    <button type="submit" class="btn btn--danger-soft btn--sm">Отклонить</button>
+                  </form>
+                <% } else if (u.status === 'active') { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
+                    <input type="hidden" name="status" value="rejected">
+                    <button type="submit" class="btn btn--danger-soft btn--sm">Блокировать</button>
+                  </form>
+                <% } else { %>
+                  <form method="POST" action="/admin/users/<%= u.id %>/status" class="inline-form">
+                    <input type="hidden" name="status" value="active">
+                    <button type="submit" class="btn btn--secondary btn--sm">Разблокировать</button>
+                  </form>
+                <% } %>
+              </span>
+            <% } else { %>
+              <span class="faint">—</span>
+            <% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
 
 <%- include('partials/footer') %>

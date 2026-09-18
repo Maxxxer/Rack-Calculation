@@ -1,0 +1,68 @@
+OBJECTS 122
+IMG obj 45 filter none w 542 h 276 cs /DeviceGray bpc 8
+  filter not handled: none len 149594
+IMG obj 44 filter [/LZWDecode ] w 542 h 276 cs 43 0 R bpc 8
+  filter not handled: [/LZWDecode ] len 50798
+IMG obj 53 filter none w 538 h 100 cs /DeviceGray bpc 8
+  filter not handled: none len 53802
+IMG obj 52 filter [/LZWDecode ] w 538 h 100 cs 51 0 R bpc 8
+  filter not handled: [/LZWDecode ] len 13684
+IMG obj 89 filter [/DCTDecode] w 1008 h 520 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_89.jpg 370815
+IMG obj 95 filter [/DCTDecode] w 1288 h 747 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_95.jpg 226853
+IMG obj 101 filter [/DCTDecode] w 1231 h 815 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_101.jpg 287441
+IMG obj 107 filter [/DCTDecode] w 960 h 1002 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_107.jpg 326947
+IMG obj 118 filter [/DCTDecode] w 429 h 596 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_118.jpg 97645
+IMG obj 119 filter [/DCTDecode] w 446 h 593 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_119.jpg 107549
+IMG obj 120 filter [/DCTDecode] w 396 h 582 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_120.jpg 54749
+IMG obj 121 filter [/DCTDecode] w 157 h 595 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_121.jpg 33541
+IMG obj 122 filter [/DCTDecode] w 398 h 322 cs 31 0 R bpc 8
+  saved scripts\_tmp_img\img_122.jpg 133189
+SAVED 9
+--- 4-comp CMYK (4 numbers + scn/k) ---
+CMYK 0.0000 0.0000 0.0000 -> #NANNANNAN x929
+CMYK 1.0000 0.8745 0.0510 -> #NANNANNAN x458
+CMYK 1.0000 0.6745 0.0863 -> #NANNANNAN x9
+CMYK 0.0118 0.7333 1.0000 -> #NANNANNAN x6
+CMYK 0.0980 1.0000 0.4431 -> #NANNANNAN x2
+--- 3-comp (3 numbers + scn) ---
+RGB 0.0588 0.0667 -> #0F11NAN x1907
+RGB 0.0000 0.0000 -> #0000NAN x930
+RGB 0.8745 0.0510 -> #DF0DNAN x458
+RGB 0.6745 0.0863 -> #AC16NAN x9
+RGB 0.7333 1.0000 -> #BBFFNAN x6
+RGB 1.0000 0.4431 -> #FF71NAN x2
+RGB 0.1216 0.1882 -> #1F30NAN x2
+RGB 1.0000 1.0000 -> #FFFFNAN x1
+RGB 0.3059 0.3137 -> #4E50NAN x1
+--- 2-comp (2 numbers + scn) ---
+2c 0.0667 -> #11NAN?? x1907
+2c 0.0000 -> #00NAN?? x930
+2c 0.0510 -> #0DNAN?? x458
+2c 0.0863 -> #16NAN?? x9
+2c 1.0000 -> #FFNAN?? x7
+2c 0.4431 -> #71NAN?? x2
+2c 0.1882 -> #30NAN?? x2
+2c 0.3137 -> #50NAN?? x1
+--- 1-comp (1 number + scn) ---
+1c  x3316
+--- context samples ---
+>>> "0000 cm\r\n/GS11 gs\r\n/OC /Pr12 BDC\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n0.0000 595.2756 m\r\n841.8898 595.27"
+>>> "0000 cm\r\n/GS11 gs\r\n/OC /Pr20 BDC\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n0.0000 595.2756 m\r\n841.8898 595.27"
+>>> "9280 l\r\n0.0000 435.9280 l\r\nh\r\nf*\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n39.5580 479.3649 m\r\n46.6336 501.98"
+>>> "9891 l\r\n32.6582 501.9891 l\r\nh\r\nf\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n79.4412 460.3859 m\r\n72.9714 460.38"
+>>> "9891 l\r\n79.4412 501.9891 l\r\nh\r\nf\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n94.5303 459.9266 m\r\n92.4293 459.92"
+>>> "2 459.9266 94.5303 459.9266 c\r\nf\r\n/GS13 gs\r\n/CS14 cs 1.0000 0.8745 0.0510 0.2510 scn\r\n117.8972 459.9266 m\r\n115.7961 459."
+### "23.8386 548.8464 122.9159 548.8464 c\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n26.2074 407.5852 m\r\n27.3274 407.58"
+### "74 417.3851 l\r\n26.2074 417.3851 l\r\nh\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n37.2954 407.5852 m\r\n37.1835 407.97"
+### " 35.4756 408.3831 34.6076 408.3831 c\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n43.0775 407.4452 m\r\n44.5615 407.44"
+### " 41.6075 407.4452 43.0775 407.4452 c\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n51.1693 407.5852 m\r\n51.0574 407.97"
+### " 49.3495 408.3831 48.4815 408.3831 c\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n55.3414 414.7393 m\r\n54.4592 414.73"
+### ".0835 413.3251 56.0835 412.4432 c\r\nh\r\nf\r\n/GS13 gs\r\n/CS31 cs 0.0588 0.0667 0.0824 scn\r\n60.7595 414.7393 m\r\n59.2475 414.73"

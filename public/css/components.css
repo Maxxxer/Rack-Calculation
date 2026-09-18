@@ -1,0 +1,1124 @@
+/* ============================================================================
+   Rack Calculation — 04 · Компоненты
+   Кнопки, панели, поля, таблицы, бейджи, алерты.
+   ========================================================================== */
+
+/* ============================================================================
+   Кнопки
+   Плоский фирменный цвет вместо градиента со свечением: в плотных формах
+   и таблицах градиент даёт визуальный шум и плохо печатается.
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: 9px 18px;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* -- Основное действие --------------------------------------------------- */
+.btn--primary {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: #fff;
+}
+
+.btn--primary:hover {
+  background: var(--brand-800);
+  border-color: var(--brand-800);
+  color: #fff;
+}
+
+/* -- Второстепенное: контурная кнопка ----------------------------------- */
+.btn--secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--ink-2);
+}
+
+.btn--secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--brand-300);
+  color: var(--brand-600);
+}
+
+/* -- Призрачная: для действий внутри таблиц и панелей ------------------- */
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--brand-500);
+}
+
+.btn--ghost:hover {
+  background: var(--brand-50);
+  color: var(--brand-600);
+}
+
+/* -- Подтверждающее ------------------------------------------------------ */
+.btn--success {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+
+.btn--success:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+/* -- Разрушительное ------------------------------------------------------ */
+.btn--danger {
+  background: var(--err);
+  border-color: var(--err);
+  color: #fff;
+}
+
+.btn--danger:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+/* Мягкий вариант разрушительного — для частых, но обратимых действий */
+.btn--danger-soft {
+  background: var(--surface);
+  border-color: var(--err-line);
+  color: var(--err);
+}
+
+.btn--danger-soft:hover {
+  background: var(--err-bg);
+  color: var(--err);
+}
+
+/* -- Размеры ------------------------------------------------------------- */
+.btn--lg {
+  padding: 12px 26px;
+  min-height: 46px;
+  font-size: var(--fs-md);
+}
+
+.btn--sm {
+  padding: 5px 11px;
+  min-height: 30px;
+  font-size: var(--fs-sm);
+}
+
+.btn--block {
+  display: flex;
+  width: 100%;
+}
+
+/* Кнопка-иконка: ровный квадрат, обязательно с доступным именем */
+.btn--icon {
+  padding: 0;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+}
+
+.btn--icon.btn--sm {
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+}
+
+/* -- Ряды кнопок --------------------------------------------------------- */
+.actions,
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.btn-row--end {
+  justify-content: flex-end;
+}
+
+.inline-form {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+}
+
+/* ============================================================================
+   Панель — секция страницы с номером и заголовком
+   ========================================================================== */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.panel__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.panel__num {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--brand-200);
+  border-radius: var(--r-sm);
+  background: var(--brand-50);
+  color: var(--brand-500);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.panel__titles {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.panel__title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+.panel__sub {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.panel__aside {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.panel__body {
+  padding: var(--sp-6);
+}
+
+.panel__body > * + * {
+  margin-top: var(--sp-6);
+}
+
+.panel__foot {
+  padding: var(--sp-4) var(--sp-6);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.panel--flush .panel__body {
+  padding: 0;
+}
+
+/* Таблица внутри панели прижимается к её краям */
+.panel--flush .table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
+/* ============================================================================
+   Карточка — простая поверхность (админка, служебные блоки, формы)
+   ========================================================================== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+}
+
+.card > * + * {
+  margin-top: var(--sp-5);
+}
+
+.card__head {
+  padding-bottom: var(--sp-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.card__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+
+.card__note {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* Fieldset-вариант карточки: оформление заголовка через legend */
+fieldset.card {
+  min-width: 0;
+}
+
+fieldset.card > legend {
+  padding: 0 var(--sp-2);
+  margin-left: calc(-1 * var(--sp-2));
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--brand-500);
+}
+
+/* ============================================================================
+   Показатель — крупная метрика в шапке результатов
+   ========================================================================== */
+.stat {
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.stat__label {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.stat__value {
+  margin-top: var(--sp-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.stat__unit {
+  margin-left: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Поля формы
+   ========================================================================== */
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-5) var(--sp-6);
+}
+
+.field-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+  .field-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .field-grid,
+  .field-grid--3 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-4);
+  }
+}
+
+.field {
+  min-width: 0;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.field__req {
+  color: var(--err);
+  margin-left: 2px;
+}
+
+.field__hint {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+/* -- Инпуты -------------------------------------------------------------- */
+.input,
+.select,
+.textarea,
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='tel'],
+input[type='search'],
+input[type='date'],
+input[type='file'],
+select,
+textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  line-height: 1.4;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    background var(--dur) var(--ease);
+}
+
+input[type='number'],
+.input--num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-faint);
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled),
+textarea:hover:not(:disabled) {
+  border-color: var(--brand-300);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: var(--focus-ring);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b6b7c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  cursor: pointer;
+}
+
+input[type='file'] {
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+input[type='file']::file-selector-button {
+  margin-right: var(--sp-3);
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+input[type='file']::file-selector-button:hover {
+  background: var(--brand-50);
+  border-color: var(--brand-300);
+  color: var(--brand-600);
+}
+
+/* ============================================================================
+   Выбор: радиокнопки режима и чекбоксы опций
+   Подсветка выбранной строки — через :has(), без JavaScript.
+   ========================================================================== */
+.choice-set {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--fs-base);
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+
+.choice:hover {
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+  color: var(--brand-600);
+  font-weight: 600;
+}
+
+.choice:has(input:disabled) {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.choice input[type='radio'],
+.choice input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  flex: none;
+  accent-color: var(--brand-500);
+  cursor: pointer;
+}
+
+/* -- Сетка опций --------------------------------------------------------- */
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+@media (min-width: 700px) {
+  .options-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .options-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.option-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: var(--fs-base);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.option-item:hover {
+  border-color: var(--brand-300);
+  background: var(--brand-50);
+}
+
+.option-item:has(input:checked) {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.option-item:has(input:disabled) {
+  cursor: default;
+}
+
+.option-item input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--brand-500);
+  cursor: pointer;
+}
+
+.option-item__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.option-item:has(input:checked) .option-item__text {
+  color: var(--brand-600);
+  font-weight: 500;
+}
+
+/* -- Блок, скрытый до выбора режима ------------------------------------- */
+.is-hidden {
+  display: none;
+}
+
+/* -- Разделитель внутри панели ------------------------------------------ */
+.rule {
+  height: 1px;
+  border: 0;
+  background: var(--border);
+  margin: var(--sp-5) 0;
+}
+/* ============================================================================
+   Таблицы данных
+   Единственный «шумный» элемент в приложении — поэтому оформление сведено
+   к волосяным линиям: без заливки-зебры, без тени, без цветной шапки.
+   Числовые колонки — моноширинные табличные цифры и выключка вправо.
+   ========================================================================== */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrap--plain {
+  border: 0;
+  border-radius: 0;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-base);
+}
+
+.data-table caption {
+  padding: var(--sp-3) var(--sp-4);
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.data-table th {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover td {
+  background: var(--brand-50);
+}
+
+.data-table th.num,
+.data-table td.num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table td.num--strong {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.data-table th.num--strong {
+  color: var(--accent);
+}
+
+.data-table .cell-code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.data-table .cell-name {
+  min-width: 220px;
+}
+
+.data-table .cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table tfoot td {
+  padding: 11px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.data-table .row-group td {
+  padding: 9px 14px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+/* Числа вне таблиц всё равно должны стоять в колонку */
+.data-table td .num,
+.data-table th .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================================
+   Таблица «показатель — значение»
+   Используется в карточках характеристик и калькуляции.
+   ========================================================================== */
+.kv {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-base);
+}
+
+.kv th {
+  padding: 0 0 var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.kv td {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: baseline;
+}
+
+.kv tr:last-child td {
+  border-bottom: 0;
+}
+
+.kv td:first-child {
+  width: 60%;
+  padding-right: var(--sp-4);
+  color: var(--text-muted);
+}
+
+.kv td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.kv--tight td {
+  padding: 5px 0;
+}
+
+/* Итоговые строки */
+.kv .total-row td {
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.kv .grand-row td {
+  padding-top: var(--sp-4);
+  border-bottom: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ============================================================================
+   Статусы: пользователи (pending / active / rejected) и КП (draft / sent /
+   approved / rejected). Ранее эти классы были размазаны по инлайн-<style>
+   внутри quotes.ejs, quote-view.ejs и admin-users.ejs.
+   ========================================================================== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-draft {
+  background: var(--surface-3);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.status-sent,
+.status-pending {
+  background: var(--warn-bg);
+  border-color: var(--warn-line);
+  color: var(--warn);
+}
+
+.status-approved,
+.status-active {
+  background: var(--ok-bg);
+  border-color: var(--ok-line);
+  color: var(--ok);
+}
+
+.status-rejected {
+  background: var(--err-bg);
+  border-color: var(--err-line);
+  color: var(--err);
+}
+
+/* ============================================================================
+   Метки: обязательная опция, служебные пометки
+   ========================================================================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--brand-200);
+  border-radius: var(--r-xs);
+  background: var(--brand-50);
+  color: var(--brand-500);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge--neutral {
+  border-color: var(--border);
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+.badge--ok {
+  border-color: var(--ok-line);
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.badge--warn {
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.badge--err {
+  border-color: var(--err-line);
+  background: var(--err-bg);
+  color: var(--err);
+}
+
+/* Метка «рекомендовано» вместо символа ★ в тексте */
+.recommended {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand-500);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recommended .icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================================================
+   Алерты
+   ========================================================================== */
+.alert {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: var(--fs-base);
+}
+
+.alert__icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.alert__body > * + * {
+  margin-top: var(--sp-2);
+}
+
+.alert__title {
+  font-weight: 600;
+}
+
+.alert ul {
+  margin: 0;
+  padding-left: var(--sp-5);
+}
+
+.alert li + li {
+  margin-top: var(--sp-1);
+}
+
+.alert--error {
+  background: var(--err-bg);
+  border-color: var(--err-line);
+  border-left-color: var(--err);
+  color: var(--err);
+}
+
+.alert--success {
+  background: var(--ok-bg);
+  border-color: var(--ok-line);
+  border-left-color: var(--ok);
+  color: var(--ok);
+}
+
+.alert--warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-line);
+  border-left-color: var(--warn);
+  color: var(--warn);
+}
+
+.alert--info {
+  background: var(--info-bg);
+  border-color: var(--info-line);
+  border-left-color: var(--info);
+  color: var(--info);
+}
+
+/* ============================================================================
+   Раскрывающийся блок (индивидуальные линии компрессоров и т. п.)
+   ========================================================================== */
+details.disclosure {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+
+details.disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  color: var(--brand-500);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  transition: background var(--dur) var(--ease);
+}
+
+details.disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.disclosure > summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--dur) var(--ease);
+}
+
+details.disclosure[open] > summary::after {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+details.disclosure > summary:hover {
+  background: var(--brand-50);
+}
+
+details.disclosure[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.disclosure__body {
+  padding: var(--sp-4) var(--sp-5);
+  font-size: var(--fs-base);
+}
+
+.disclosure__body > * + * {
+  margin-top: var(--sp-3);
+}
+
+/* ============================================================================
+   Пустое состояние
+   ========================================================================== */
+.empty {
+  padding: var(--sp-9) var(--sp-6);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty__icon {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto var(--sp-3);
+  color: var(--brand-300);
+}
+
+.empty__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.empty__text {
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+
+.empty .btn {
+  margin-top: var(--sp-5);
+}
+
+/* ============================================================================
+   Служебные заголовки списков внутри панели
+   ========================================================================== */
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.list-head__title {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.list-head__meta {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+/* Подпись под таблицей внутри .table-wrap */
+.table-foot {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.table-foot b {
+  color: var(--ink-2);
+}
+/* Таблица с внутренними отступами панели — когда .panel__body не используется */
+.table-inset {
+  margin: 0 var(--sp-6) var(--sp-6);
+}
+
+/* Продолжение тела панели после таблицы: без верхнего отступа */
+.panel__body--continuation {
+  padding-top: 0;
+}

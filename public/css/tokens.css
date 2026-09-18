@@ -1,0 +1,193 @@
+/* ============================================================================
+   Rack Calculation — 01 · Дизайн-токены
+   Фирменная палитра MAIR: #173F6D · #2E6FB7 · #4E8FD9
+   Базовый тон #173F6D взят из логотипа (public/assets/logo-mair.svg → .fil0),
+   вся шкала выведена из него — фирменный цвет сохраняется на любом уровне.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  color-scheme: light;
+
+  /* -- Фирменная шкала ------------------------------------------------ */
+  --brand-900: #0a2036;
+  --brand-800: #102e52;
+  --brand-700: #173f6d; /* фирменный */
+  --brand-600: #1e5590;
+  --brand-500: #2e6fb7; /* акцент, интерактив */
+  --brand-400: #4e8fd9;
+  --brand-300: #8cbae9;
+  --brand-200: #cde0f5;
+  --brand-100: #e8f0fa;
+  --brand-50: #f3f8fd;
+
+  /* -- Нейтральные ---------------------------------------------------- */
+  --ink: #0c1721;
+  --ink-2: #33404f;
+  --ink-3: #5b6b7c;
+  --ink-4: #8695a4;
+  --line: #dbe2ea;
+  --line-2: #e9eef4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --surface-3: #edf1f5;
+  --canvas: #f1f4f8;
+
+  /* -- Семантика ------------------------------------------------------ */
+  --ok: #0f7b4f;
+  --ok-bg: #e6f4ec;
+  --ok-line: #b7dfc8;
+  --warn: #8a5a00;
+  --warn-bg: #fdf3df;
+  --warn-line: #efd9a8;
+  --err: #a32218;
+  --err-bg: #fbecea;
+  --err-line: #f0c6c1;
+  --info: var(--brand-600);
+  --info-bg: var(--brand-100);
+  --info-line: var(--brand-200);
+
+  /* -- Акцент ---------------------------------------------------------
+     Единственный «фирменный» цвет для линий, цифр и акцентных надписей.
+     Гарантированно читается на текущей поверхности: в светлой теме — это
+     плотный #173F6D, в тёмной он светлеет до #7DB2EA. Поэтому в разметке
+     и компонентах используется --accent, а не --brand-700 напрямую.
+     ------------------------------------------------------------------ */
+  --accent: var(--brand-700);
+  --accent-soft: var(--brand-500);
+
+  /* -- Семантические слоты ------------------------------------------- */
+  --brand: var(--accent);
+  --primary: var(--accent-soft);
+  --text: var(--ink);
+  --text-muted: var(--ink-3);
+  --text-faint: var(--ink-4);
+  --bg: var(--canvas);
+  --card: var(--surface);
+  --border: var(--line);
+  --border-soft: var(--line-2);
+  --success: var(--ok);
+  --danger: var(--err);
+  --warning: var(--warn);
+  --appbar-bg: var(--brand-700);
+  --appbar-fg: #ffffff;
+  --appbar-line: rgba(255, 255, 255, 0.14);
+
+  /* -- Типографика ----------------------------------------------------
+     Inter — интерфейс, JetBrains Mono — все числовые данные (tabular).
+     Оба подгружаются с Google Fonts; при отсутствии сети стек деградирует
+     до Segoe UI / Consolas, поэтому вёрстка не «плывёт» ни в одном сценарии.
+     ------------------------------------------------------------------ */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, 'SF Mono', ui-monospace, monospace;
+
+  --fs-2xs: 0.6875rem; /* 11 */
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.8125rem; /* 13 */
+  --fs-base: 0.875rem; /* 14 */
+  --fs-md: 0.9375rem; /* 15 */
+  --fs-lg: 1.0625rem; /* 17 */
+  --fs-xl: 1.375rem; /* 22 */
+  --fs-2xl: 1.75rem; /* 28 */
+  --fs-3xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+
+  --tracking-tight: -0.022em;
+  --tracking-caps: 0.14em;
+
+  /* -- Ритм ------------------------------------------------------------ */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 56px;
+  --sp-10: 72px;
+
+  /* -- Радиусы: сдержанные, «документные» ----------------------------- */
+  --r-xs: 3px;
+  --r-sm: 5px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  /* -- Тени: приоритет у волосяных линий, тень — только акцент -------- */
+  --shadow-1: 0 1px 1px rgba(12, 23, 33, 0.04);
+  --shadow-2: 0 1px 2px rgba(12, 23, 33, 0.05), 0 10px 28px -16px rgba(12, 23, 33, 0.28);
+  --shadow-pop: 0 16px 40px -12px rgba(12, 23, 33, 0.3);
+
+  /* -- Фокус ---------------------------------------------------------- */
+  --focus-ring: 0 0 0 3px rgba(46, 111, 183, 0.3);
+  --focus-ring-in: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand-500);
+
+  /* -- Движение ------------------------------------------------------- */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur: 0.18s;
+
+  /* -- Каркас --------------------------------------------------------- */
+  --shell-max: 1280px;
+  --gutter: clamp(16px, 3vw, 32px);
+  --appbar-h: 60px;
+}
+
+/* ============================================================================
+   Тёмная тема — по системной настройке. Печатный документ КП (print-doc.css)
+   светлую тему задаёт собственными значениями и от этой ветки не зависит.
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ink: #e6edf4;
+    --ink-2: #b8c6d4;
+    --ink-3: #8b9aa9;
+    --ink-4: #6b7b8a;
+    --line: #24313e;
+    --line-2: #1b2733;
+    --surface: #111c26;
+    --surface-2: #16222d;
+    --surface-3: #1c2b38;
+    --canvas: #0b131b;
+
+    --brand-50: #0e1a26;
+    --brand-100: #122534;
+    --brand-200: #1c3851;
+    --brand-300: #2d5479;
+    --brand-400: #6aa6e3;
+    --brand-500: #5f9fe0;
+    --brand-600: #83b7ee;
+
+    --ok: #5fcf9a;
+    --ok-bg: #0e2a1f;
+    --ok-line: #1e5140;
+    --warn: #e5b85c;
+    --warn-bg: #2a2110;
+    --warn-line: #55421f;
+    --err: #f08c7e;
+    --err-bg: #2b1513;
+    --err-line: #57291f;
+
+    --appbar-bg: #08131f;
+    --appbar-line: rgba(255, 255, 255, 0.1);
+
+    --accent: #7db2ea;
+    --accent-soft: var(--brand-500);
+
+    --primary: var(--accent-soft);
+    --text: var(--ink);
+    --text-muted: var(--ink-3);
+    --text-faint: var(--ink-4);
+    --bg: var(--canvas);
+    --card: var(--surface);
+    --border: var(--line);
+    --border-soft: var(--line-2);
+
+    --shadow-1: 0 1px 1px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px -16px rgba(0, 0, 0, 0.7);
+    --shadow-pop: 0 16px 40px -12px rgba(0, 0, 0, 0.75);
+    --focus-ring: 0 0 0 3px rgba(95, 159, 224, 0.35);
+  }
+}

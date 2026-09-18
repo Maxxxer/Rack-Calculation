@@ -1,49 +1,108 @@
 <%- include('partials/header', { title: 'Импорт компрессоров из Excel' }) %>
 
-<h1>Импорт компрессоров из Excel</h1>
-
-<% if (message) { %><div class="alert alert-success"><%= message %></div><% } %>
-<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
-<% if (imported) { %>
-  <div class="alert alert-success">
-    ✅ Импорт завершен: загружено <%= imported.count %> моделей (производитель <%= imported.manufacturer %>),
-    пропущено строк: <%= imported.skipped %>.
+<div class="page-head">
+  <div class="page-head__main">
+    <span class="kicker">Администрирование</span>
+    <h1>Импорт компрессоров из Excel</h1>
+    <p class="page-head__lead">
+      Загрузка каталога компрессоров с полиномами AHRI/EN12900 из файла «База данных.xlsx».
+    </p>
   </div>
-<% } %>
+</div>
 
-<fieldset class="card">
-  <legend>Формат файла</legend>
-  <p class="hint">Файл должен соответствовать формату листов <b>Refcomp_polynom</b> / <b>Xecom_polynom</b> из «База данных.xlsx»:</p>
-  <ul class="hint" style="margin-left:20px; margin-bottom:10px">
-    <li>колонка 1 — модель; колонка 2 — частота; 3 — напряжение; 4 — хладагент; 5 — объемная производительность м³/ч</li>
-    <li>7 — диаметр всасывания; 8 — диаметр нагнетания; 9 — макс. ток; 11–14 — диапазоны t конд / t кип</li>
-    <li>колонки 15–24 — коэффициенты P_C1..P_C10 (мощность)</li>
-    <li>колонки 45–54 — коэффициенты M_C1..M_C10 (массовый расход, опционально)</li>
-    <li>колонки 55–64 — коэффициенты C_C1..C_C10 (холодопроизводительность) — <b>обязательно</b></li>
-    <li>колонка 65 — множитель (1000 для Вт; 1 если значения уже в кВт)</li>
-  </ul>
-</fieldset>
-
-<form method="POST" action="/admin/import" enctype="multipart/form-data" class="card">
-  <div class="form-row">
-    <div class="form-group">
-      <label>Производитель</label>
-      <select name="manufacturerId" required>
-        <% manufacturers.forEach(m => { %>
-          <option value="<%= m.id %>"><%= m.name %></option>
-        <% }) %>
-      </select>
+<div class="stack">
+  <% if (message) { %>
+    <div class="alert alert--success" role="status">
+      <span class="alert__icon"><%- include('partials/icon', { name: 'check-circle' }) %></span>
+      <div class="alert__body"><%= message %></div>
     </div>
-    <div class="form-group">
-      <label>Цена по умолчанию, EUR (если нет в файле)</label>
-      <input type="number" name="defaultPrice" value="1000" min="0">
+  <% } %>
+
+  <% if (error) { %>
+    <div class="alert alert--error" role="alert">
+      <span class="alert__icon"><%- include('partials/icon', { name: 'alert' }) %></span>
+      <div class="alert__body"><%= error %></div>
     </div>
-  </div>
-  <div class="form-group">
-    <label>Файл Excel (.xlsx)</label>
-    <input type="file" name="file" accept=".xlsx,.xls" required>
-  </div>
-  <button type="submit" class="btn btn-primary">Загрузить</button>
-</form>
+  <% } %>
+
+  <% if (imported) { %>
+    <div class="alert alert--success" role="status">
+      <span class="alert__icon"><%- include('partials/icon', { name: 'check-circle' }) %></span>
+      <div class="alert__body">
+        <p class="alert__title">Импорт завершён</p>
+        <p>
+          Загружено моделей: <b class="num"><%= imported.count %></b>
+          · производитель: <b><%= imported.manufacturer %></b>
+          · пропущено строк: <b class="num"><%= imported.skipped %></b>.
+        </p>
+      </div>
+    </div>
+  <% } %>
+
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">Формат файла</h2>
+    </div>
+    <p class="hint">
+      Файл должен соответствовать формату листов <b>Refcomp_polynom</b> / <b>Xecom_polynom</b>
+      из «База данных.xlsx». Колонки нумеруются с единицы:
+    </p>
+    <ul class="doc-list">
+      <li>1 — модель; 2 — частота; 3 — напряжение; 4 — хладагент; 5 — объёмная производительность, м³/ч</li>
+      <li>7 — диаметр всасывания; 8 — диаметр нагнетания; 9 — макс. ток; 11–14 — диапазоны t конденсации / t кипения</li>
+      <li>15–24 — коэффициенты <b>P_C1..P_C10</b> (потребляемая мощность)</li>
+      <li>45–54 — коэффициенты <b>M_C1..M_C10</b> (массовый расход, опционально)</li>
+      <li>55–64 — коэффициенты <b>C_C1..C_C10</b> (холодопроизводительность) — обязательны</li>
+      <li>65 — множитель: 1000, если значения в Вт; 1, если уже в кВт</li>
+    </ul>
+    <p class="hint">
+      Совпадение по модели, производителю и хладагенту обновляет существующую запись —
+      повторный импорт не создаёт дублей.
+    </p>
+  </section>
+
+  <section class="card">
+    <div class="card__head">
+      <h2 class="card__title">Загрузка файла</h2>
+    </div>
+
+    <form method="POST" action="/admin/import" enctype="multipart/form-data">
+      <div class="field-grid">
+        <div class="field">
+          <label class="field__label" for="importManufacturer">Производитель <span class="field__req">*</span></label>
+          <select id="importManufacturer" name="manufacturerId" required>
+            <% manufacturers.forEach(m => { %>
+              <option value="<%= m.id %>"><%= m.name %></option>
+            <% }) %>
+          </select>
+          <p class="field__hint">
+            Производитель присваивается всем моделям файла — раздел в форме загрузки.
+          </p>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="importDefaultPrice">Цена по умолчанию, EUR</label>
+          <input type="number" id="importDefaultPrice" name="defaultPrice"
+                 value="1000" min="0" step="1">
+          <p class="field__hint">Применяется, если цена отсутствует в файле.</p>
+        </div>
+
+        <div class="field field--wide">
+          <label class="field__label" for="importFile">Файл Excel (.xlsx, .xls) <span class="field__req">*</span></label>
+          <input type="file" id="importFile" name="file" accept=".xlsx,.xls" required>
+        </div>
+      </div>
+
+      <div class="btn-row u-mt-6">
+        <button type="submit" class="btn btn--primary">
+          <%- include('partials/icon', { name: 'upload' }) %>Загрузить и импортировать
+        </button>
+        <a href="/admin/catalog" class="btn btn--ghost">
+          <%- include('partials/icon', { name: 'database' }) %>Открыть каталог
+        </a>
+      </div>
+    </form>
+  </section>
+</div>
 
 <%- include('partials/footer') %>

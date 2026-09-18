@@ -1,43 +1,55 @@
 <%
-  // Таблица виброгасителей: индивидуальный подбор на каждый компрессор,
-  // раздельно для линии всасывания и линии нагнетания.
+  // Виброгасители: индивидуальный подбор на каждый компрессор, раздельно для
+  // линии всасывания и линии нагнетания. Партиал отдаёт готовый блок вместе
+  // с обёрткой .table-wrap, поэтому вызывающая страница не оборачивает его.
   const vibrationLines = [
     { key: 'suction', label: 'Всасывание' },
     { key: 'discharge', label: 'Нагнетание' }
   ];
   const showVibrationPrices = typeof isAdmin !== 'undefined' && isAdmin;
-  const basisLabel = (b) => b === 'port' ? 'по патрубку КМ'
-                       : b === 'speed' ? 'по скорости'
-                       : 'нет данных';
+  const BASIS_LABELS = { port: 'по патрубку КМ', speed: 'по скорости', none: 'нет данных' };
+  const basisLabel = (b) => BASIS_LABELS[b] || 'нет данных';
 %>
-<table class="table">
-  <tr>
-    <th>Линия</th><th>Компрессор</th><th>Кол-во КМ</th>
-    <th>Патрубок, "</th><th>Расход, кг/ч</th><th>Виброгаситель</th>
-    <th>Ø, "</th><th>Скорость, м/с</th><th>Подбор</th>
-    <% if (showVibrationPrices) { %><th>Цена, EUR</th><% } %>
-  </tr>
-  <% vibrationLines.forEach(({ key, label }) => {
-       const plan = vibration[key];
-       (plan ? plan.lines : []).forEach(row => { %>
-    <tr>
-      <td><%= label %></td>
-      <td><%= row.manufacturer %> <%= row.model %></td>
-      <td><%= row.qty %></td>
-      <td><%= row.portSizeIn != null ? row.portSizeIn : '—' %></td>
-      <td><%= row.massFlowKgh %></td>
-      <td><%= row.article %></td>
-      <td><b><%= row.sizeIn %></b></td>
-      <td><%= row.velocity != null ? row.velocity : '—' %></td>
-      <td><%= basisLabel(row.basis) %></td>
-      <% if (showVibrationPrices) { %><td><%= row.price_eur %></td><% } %>
-    </tr>
-  <% }); }); %>
-</table>
-<p class="hint">
-  Всего: всасывание — <b><%= vibration.totalSuctionQty %></b> шт.,
-  нагнетание — <b><%= vibration.totalDischargeQty %></b> шт.
-  Размер виброгасителя принят по диаметру патрубка компрессора, а при отсутствии
-  этих данных — по скорости хладагента в рекомендованном диапазоне для
-  индивидуальной производительности компрессора.
-</p>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Линия</th>
+        <th>Компрессор</th>
+        <th class="num">Кол-во КМ</th>
+        <th class="num">Патрубок, "</th>
+        <th class="num">Расход, кг/ч</th>
+        <th>Виброгаситель</th>
+        <th class="num">Ø, "</th>
+        <th class="num">Скорость, м/с</th>
+        <th>Подбор</th>
+        <% if (showVibrationPrices) { %><th class="num">Цена, EUR</th><% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% vibrationLines.forEach(({ key, label }) => {
+           const plan = vibration[key];
+           (plan ? plan.lines : []).forEach(row => { %>
+        <tr>
+          <td><%= label %></td>
+          <td><%= row.manufacturer %> <%= row.model %></td>
+          <td class="num"><%= row.qty %></td>
+          <td class="num"><%= row.portSizeIn != null ? row.portSizeIn : '—' %></td>
+          <td class="num"><%= row.massFlowKgh %></td>
+          <td class="cell-code"><%= row.article %></td>
+          <td class="num num--strong"><%= row.sizeIn %></td>
+          <td class="num"><%= row.velocity != null ? row.velocity : '—' %></td>
+          <td class="muted"><%= basisLabel(row.basis) %></td>
+          <% if (showVibrationPrices) { %><td class="num"><%= row.price_eur %></td><% } %>
+        </tr>
+      <% }); }); %>
+    </tbody>
+  </table>
+  <p class="table-foot">
+    Всего: всасывание — <b class="num"><%= vibration.totalSuctionQty %></b> шт.,
+    нагнетание — <b class="num"><%= vibration.totalDischargeQty %></b> шт.
+    Размер виброгасителя принят по диаметру патрубка компрессора, а при отсутствии
+    этих данных — по скорости хладагента в рекомендованном диапазоне для
+    индивидуальной производительности компрессора.
+  </p>
+</div>

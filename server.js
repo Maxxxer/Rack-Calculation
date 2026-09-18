@@ -22,12 +22,15 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(fileUpload());
-// Явная установка UTF-8 для всех ответов (корректная кодировка в формах авторизации)
+app.use(express.static(path.join(__dirname, 'public')));
+// Явная установка UTF-8 для динамических ответов (корректная кодировка в формах авторизации).
+// Важно: только после express.static и только если тип ещё не задан, иначе CSS/JS отдадутся как text/html.
 app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  if (!res.getHeader('Content-Type')) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  }
   next();
 });
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'rack-calc-secret-change-me',
   resave: false,
@@ -37,7 +40,10 @@ app.use(session({
 
 // ---------- Middleware ----------
 // res.locals.user — текущий пользователь для всех шаблонов
+// res.locals.currentPath — путь текущего запроса: шапка подсвечивает активный
+// пункт навигации (aria-current="page") без правок в каждом шаблоне.
 app.use((req, res, next) => {
+  res.locals.currentPath = req.path;
   res.locals.user = null;
   if (req.session.userId) {
     const u = db.prepare('SELECT id, email, name, role, status, discount_percent, company FROM users WHERE id = ?').get(req.session.userId);

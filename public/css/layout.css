@@ -1,0 +1,379 @@
+/* ============================================================================
+   Rack Calculation — 03 · Каркас: шапка, навигация, заголовки страниц, футер
+   ========================================================================== */
+
+/* ============================================================================
+   Шапка приложения
+   Вместо прежнего «стеклянного» градиентного навбара — плотная фирменная
+   плита #173F6D с волосяной линией и выверенной сеткой.
+   ========================================================================== */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--appbar-bg);
+  color: var(--appbar-fg);
+  border-bottom: 1px solid var(--appbar-line);
+}
+
+.appbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  min-height: var(--appbar-h);
+}
+
+/* -- Логотип ------------------------------------------------------------- */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: none;
+  color: var(--appbar-fg);
+  padding: var(--sp-2) 0;
+}
+
+.brand:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.brand__mark {
+  display: flex;
+  align-items: center;
+  color: #fff;
+}
+
+.brand__mark svg {
+  height: 24px;
+  width: auto;
+  fill: currentColor;
+  stroke: none;
+}
+
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  padding-left: var(--sp-3);
+  border-left: 1px solid var(--appbar-line);
+}
+
+.brand__text strong {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.brand__text span {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* -- Навигация ----------------------------------------------------------- */
+.appbar__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-1);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.navlink {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.76);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.navlink:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+}
+
+.navlink[aria-current='page'] {
+  color: #fff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.navlink[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: -1px;
+  height: 2px;
+  background: var(--brand-400);
+  border-radius: 2px 2px 0 0;
+}
+
+.navlink .icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
+}
+
+/* -- Пользователь и выход ------------------------------------------------ */
+.appbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  padding-left: var(--sp-4);
+  margin-left: var(--sp-2);
+  border-left: 1px solid var(--appbar-line);
+}
+
+.userchip {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.2;
+  max-width: 200px;
+}
+
+.userchip__name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userchip__role {
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* -- Узкие экраны: навигация уезжает в собственную полосу ---------------- */
+@media (max-width: 900px) {
+  .appbar__inner {
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-4);
+    padding-bottom: 0;
+  }
+
+  .appbar__nav {
+    order: 3;
+    width: auto;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: var(--sp-1) var(--gutter) 0;
+    border-top: 1px solid var(--appbar-line);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .appbar__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .appbar__user {
+    padding-left: 0;
+    margin-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .brand__text span {
+    font-size: var(--fs-base);
+  }
+
+  .userchip {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   Заголовок страницы
+   Фирменная плита снизу: 2 px — единственное место, где цвет заявлен
+   в полную силу, поэтому дальше по странице он работает как акцент.
+   ========================================================================== */
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding-bottom: var(--sp-5);
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: var(--sp-7);
+}
+
+.page-head__main {
+  min-width: 0;
+}
+
+.page-head h1 {
+  margin-top: var(--sp-3);
+}
+
+.page-head__lead {
+  margin-top: var(--sp-3);
+  max-width: 64ch;
+  color: var(--text-muted);
+  font-size: var(--fs-md);
+}
+
+.page-head__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+/* Метаданные документа: «Клиент · Дата · Статус» */
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-5);
+  margin-top: var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.meta-row__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.meta-row dt {
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.meta-row dd {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* ============================================================================
+   Разделитель крупных блоков (например «Результаты расчёта»)
+   ========================================================================== */
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-top: var(--sp-9);
+  margin-bottom: var(--sp-5);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--border);
+}
+
+.section-head h2 {
+  margin-top: var(--sp-2);
+}
+
+/* ============================================================================
+   Футер
+   ========================================================================== */
+.site-footer {
+  flex: none;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.site-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  width: 100%;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--gutter);
+}
+
+.site-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--accent);
+}
+
+.site-footer__brand svg {
+  height: 16px;
+  width: auto;
+  fill: currentColor;
+  stroke: none;
+}
+
+.site-footer__note {
+  color: var(--text-faint);
+}
+
+/* ============================================================================
+   Панель действий: прилипающая к низу окна на длинных формах
+   ========================================================================== */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-6);
+  padding: var(--sp-4) 0;
+  /* Непрозрачный фон: полупрозрачный градиент оставлял просвечивающие
+     подписи полей под кнопкой. Волосяная линия отделяет панель от контента. */
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+/* Служебная подпись уходит к правому краю, уступая место кнопкам */
+.action-bar__note {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.action-bar__spacer {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .action-bar__note {
+    display: none;
+  }
+
+  .action-bar .btn {
+    flex: 1 1 auto;
+  }
+}

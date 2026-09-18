@@ -1,9 +1,28 @@
 <%- include('partials/header', { title: 'Ошибка' }) %>
 
-<div class="auth-card">
-  <h1>⚠ Ошибка</h1>
-  <p><%= message %></p>
-  <p><a href="/calc" class="btn btn-primary">На главную</a></p>
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-card__head">
+      <span class="kicker">Ошибка</span>
+      <h1>Не удалось выполнить запрос</h1>
+      <p class="auth-card__note">Страница недоступна или произошёл сбой.</p>
+    </div>
+
+    <div class="alert alert--error" role="alert">
+      <span class="alert__icon"><%- include('partials/icon', { name: 'alert' }) %></span>
+      <div class="alert__body"><%= message %></div>
+    </div>
+
+    <% if (user) { %>
+      <a href="/calc" class="btn btn--primary btn--block">
+        <%- include('partials/icon', { name: 'arrow-left' }) %>Вернуться к подбору
+      </a>
+    <% } else { %>
+      <a href="/login" class="btn btn--primary btn--block">
+        <%- include('partials/icon', { name: 'arrow-left' }) %>Ко входу
+      </a>
+    <% } %>
+  </div>
 </div>
 
 <%- include('partials/footer') %>
