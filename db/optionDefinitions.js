@@ -30,6 +30,15 @@
  *                   рассчитанная на инвертор (compressors.inverter_capable).
  *                   Для поршневых и винтовых ограничение не действует —
  *                   инвертор там внешний.
+ *
+ * mandatory_rule / qty_per_compressor — комплектация масляной линии:
+ *   mandatory_rule — JSON-правило (тот же словарь, что и auto_rule). Когда оно
+ *                   выполняется, опция становится обязательной: она убирается
+ *                   из окна «Опции» и попадает в «Стандартную комплектацию»
+ *                   (например, маслоотделитель и масляный ресивер при двух и
+ *                   более спиральных или поршневых компрессорах);
+ *   qty_per_compressor — 1: количество позиции равно числу компрессоров
+ *                   (регуляторы уровня масла — по одному на компрессор).
  */
 'use strict';
 
@@ -39,15 +48,14 @@ const OPTIONS = [
   { code: 'noise', name: 'Шумоизоляция', section: 'housing', component_category: null,
     sizing: 'none', price_eur: 120, auto_rule: '', sort_order: 2 },
 
-  // --- Виброгасители: индивидуально на каждый компрессор, раздельно по линиям ---
-  { code: 'vibration_suction', name: 'Виброгаситель на всасывании (на каждый КМ)',
-    section: 'compressors', component_category: 'vibration', sizing: 'per_compressor', pipe_line: 'suction',
-    description: 'Размер по патрубку всасывания компрессора; при отсутствии данных — по скорости хладагента и производительности',
+  // --- Виброгасители: одна опция на обе линии, индивидуально на каждый КМ ---
+  // Отметив её, пользователь получает виброгасители и на линии всасывания, и на
+  // линии нагнетания — по одному на каждый компрессор (размер по патрубку КМ,
+  // при отсутствии данных — по скорости хладагента и производительности).
+  { code: 'vibration', name: 'Виброгасители (на всасывании и нагнетании, на каждый КМ)',
+    section: 'compressors', component_category: 'vibration', sizing: 'per_compressor',
+    description: 'Одна опция: виброгасители подбираются отдельно для линии всасывания и линии нагнетания — по одному на каждый компрессор; размер по патрубку КМ, при отсутствии данных — по скорости хладагента и производительности',
     auto_rule: '', sort_order: 10 },
-  { code: 'vibration_discharge', name: 'Виброгаситель на нагнетании (на каждый КМ)',
-    section: 'compressors', component_category: 'vibration', sizing: 'per_compressor', pipe_line: 'discharge',
-    description: 'Размер по патрубку нагнетания компрессора; при отсутствии данных — по скорости хладагента и производительности',
-    auto_rule: '', sort_order: 11 },
 
   { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compressors',
     component_category: null, sizing: 'none', price_eur: 180,
@@ -66,13 +74,33 @@ const OPTIONS = [
     component_category: 'check_valve', sizing: 'pipe_per_compressor', pipe_line: 'discharge',
     auto_rule: '{"min_compressors":2}', sort_order: 15 },
 
+  // --- Масляная линия -----------------------------------------------------
+  // При двух и более спиральных или поршневых компрессорах маслоотделитель,
+  // масляный ресивер и регуляторы уровня масла входят в агрегат обязательно
+  // (mandatory_rule): они убираются из окна «Опции» и переходят в базовый
+  // состав. У винтовых масляный ресивер и регулятор уровня масла не
+  // применяются — масло циркулирует в контуре компрессора и охлаждается
+  // маслоохладителем через трёхходовой термостат ORV.
   { code: 'oil_separator', name: 'Маслоотделитель', section: 'discharge', component_category: 'oil_separator',
-    sizing: 'capacity', auto_rule: '{"max_tevap":-25}', sort_order: 20 },
+    sizing: 'capacity', auto_rule: '{"max_tevap":-25}',
+    mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 20 },
   { code: 'oil_receiver', name: 'Масляный ресивер', section: 'discharge', component_category: 'oil_receiver',
-    sizing: 'capacity', auto_rule: '{"min_compressors":2,"max_tevap":-25}', sort_order: 21 },
+    sizing: 'capacity', auto_rule: '{"max_tevap":-25}', allowed_types: 'recip,scroll',
+    mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 21 },
   { code: 'erum', name: 'ЭРУМ (электронный регулятор уровня масла)', section: 'discharge',
-    component_category: null, sizing: 'none', price_eur: 240,
-    auto_rule: '{"min_compressors":2,"max_tevap":-25}', sort_order: 22 },
+    component_category: null, sizing: 'none', price_eur: 240, allowed_types: 'recip,scroll',
+    qty_per_compressor: 1, auto_rule: '{"max_tevap":-25}',
+    mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 22 },
+
+  // Масляная линия винтового компрессора: охлаждение масла в контуре.
+  // Цены — ориентировочные значения по умолчанию (в каталоге компонентов этих
+  // позиций нет): замените на свои, если известна реальная стоимость.
+  { code: 'oil_cooler', name: 'Маслоохладитель', section: 'discharge', component_category: null,
+    sizing: 'none', price_eur: 480, auto_rule: '',
+    allowed_types: 'screw', sort_order: 23 },
+  { code: 'orv_thermostat', name: 'Трёхходовой масляный термостат ORV', section: 'discharge',
+    component_category: null, sizing: 'none', price_eur: 210, auto_rule: '',
+    allowed_types: 'screw', sort_order: 24 },
   { code: 'winter_kvr', name: 'Зимняя опция KVR+NRD+NRV', section: 'winter', component_category: 'kvr_valve',
     sizing: 'capacity', auto_rule: '{"max_tcond":25}', sort_order: 30 },
   { code: 'winter_cpr', name: 'Клапан поддержания давления до себя', section: 'winter',

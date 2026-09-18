@@ -1,0 +1,197 @@
+/* ============================================================================
+   Rack Calculation — 07 · Гидравлическая схема
+   Схема собирается из результата расчёта (services/schematic.js), поэтому файл
+   подключается и приложением (style.css), и печатной формой КП
+   (print-doc.css). Цвета берутся из темы приложения, а при её отсутствии —
+   из печатной палитры: у каждого свойства есть резервное значение.
+   ========================================================================== */
+
+.schematic {
+  --sch-surface: var(--card, #ffffff);
+  --sch-pipe: var(--brand-500, #2e6fb7);
+  --sch-sym: var(--ink-2, #3c4a58);
+  --sch-soft: var(--border, #d5dce4);
+  --sch-ink: var(--text, #16202b);
+  --sch-muted: var(--text-muted, #6b7887);
+  --sch-accent: var(--brand-600, #17497f);
+}
+
+.schematic__frame {
+  border: 1px solid var(--sch-soft);
+  border-radius: 6px;
+  background: var(--sch-surface);
+  overflow: hidden;
+}
+
+.schematic__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* -- Трубы --------------------------------------------------------------- */
+.schematic__pipe {
+  fill: none;
+  stroke: var(--sch-pipe);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
+.schematic__pipe--oil {
+  stroke-dasharray: 7 4;
+  stroke-width: 1.8;
+}
+
+.schematic__pipe--diff {
+  stroke-dasharray: 4 4;
+  stroke-width: 1.6;
+  opacity: 0.75;
+}
+
+.schematic__arrow {
+  fill: var(--sch-pipe);
+}
+
+/* -- Символы компонентов -------------------------------------------------- */
+.schematic__unit > * {
+  fill: none;
+  stroke: var(--sch-sym);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.schematic__unit--external > * {
+  stroke: var(--sch-muted);
+  stroke-dasharray: none;
+}
+
+.schematic__unit--external rect:first-child {
+  stroke-dasharray: 7 5;
+  fill: var(--sch-surface);
+}
+
+.schematic__mask {
+  fill: var(--sch-surface);
+  stroke: none;
+}
+
+/* -- Номера позиций и подписи -------------------------------------------- */
+.schematic__badge circle {
+  fill: var(--sch-accent);
+  stroke: none;
+}
+
+.schematic__badge text {
+  fill: #ffffff;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+.schematic__label,
+.schematic__line-label {
+  fill: var(--sch-muted);
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.schematic__line-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  fill: var(--sch-sym);
+}
+
+/* -- Легенда ------------------------------------------------------------- */
+.schematic__legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--sch-soft);
+}
+
+.schematic__legend-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--sch-soft);
+  font-size: 13px;
+}
+
+.schematic__legend-row:last-child {
+  border-bottom: 0;
+}
+
+.schematic__legend-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--sch-accent);
+  color: #ffffff;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.schematic__legend-name {
+  min-width: 0;
+  color: var(--sch-ink);
+}
+
+.schematic__legend-article {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  color: var(--sch-muted);
+  white-space: nowrap;
+}
+
+.schematic__legend-qty {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sch-ink);
+  white-space: nowrap;
+}
+
+.schematic__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--sch-soft);
+  background: var(--surface-2, #f5f8fb);
+  font-size: 12px;
+  color: var(--sch-muted);
+}
+
+.schematic__foot b {
+  color: var(--sch-ink);
+  font-weight: 600;
+}
+
+@media print {
+  .schematic__frame {
+    break-inside: avoid;
+  }
+
+  .schematic__legend-row {
+    font-size: 10pt;
+  }
+}
+
+@media (max-width: 640px) {
+  .schematic__legend-row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+  }
+
+  .schematic__legend-article {
+    grid-column: 2;
+  }
+}

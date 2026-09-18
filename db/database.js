@@ -141,6 +141,8 @@ function initSchema() {
     mandatory INTEGER NOT NULL DEFAULT 0,
     allowed_types TEXT DEFAULT '',                -- типы КМ, для которых опция существует ('' — любые)
     inverter_only INTEGER NOT NULL DEFAULT 0,     -- для спиральных требуется инверторная модель
+    mandatory_rule TEXT DEFAULT '',               -- JSON: когда опция обязательна (базовый состав)
+    qty_per_compressor INTEGER NOT NULL DEFAULT 0,-- количество = число компрессоров
     sort_order INTEGER DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1
   );
@@ -187,19 +189,23 @@ function syncOptions() {
   const upsert = db.prepare(`
     INSERT INTO options
     (code, name, section, component_category, sizing, pipe_line, description, price_eur,
-     auto_rule, mandatory, allowed_types, inverter_only, sort_order)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+     auto_rule, mandatory, allowed_types, inverter_only, mandatory_rule, qty_per_compressor,
+     sort_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(code) DO UPDATE SET
       name=excluded.name, section=excluded.section,
       component_category=excluded.component_category, sizing=excluded.sizing,
       pipe_line=excluded.pipe_line, description=excluded.description,
       price_eur=excluded.price_eur, auto_rule=excluded.auto_rule,
       mandatory=excluded.mandatory, allowed_types=excluded.allowed_types,
-      inverter_only=excluded.inverter_only, sort_order=excluded.sort_order, active=1`);
+      inverter_only=excluded.inverter_only, mandatory_rule=excluded.mandatory_rule,
+      qty_per_compressor=excluded.qty_per_compressor,
+      sort_order=excluded.sort_order, active=1`);
   for (const o of OPTIONS) {
     upsert.run(o.code, o.name, o.section, o.component_category || null, o.sizing || 'none',
       o.pipe_line || null, o.description || '', o.price_eur || 0, o.auto_rule || '',
-      o.mandatory || 0, o.allowed_types || '', o.inverter_only || 0, o.sort_order || 0);
+      o.mandatory || 0, o.allowed_types || '', o.inverter_only || 0, o.mandatory_rule || '',
+      o.qty_per_compressor || 0, o.sort_order || 0);
   }
   // Удаляем опции, которых больше нет в определениях (например, старая 'vibration')
   const codes = OPTIONS.map(o => o.code);
@@ -249,6 +255,8 @@ function migrateSchema() {
   ensureColumn('compressors', 'inverter_capable', 'inverter_capable INTEGER NOT NULL DEFAULT 0');
   ensureColumn('options', 'allowed_types', "allowed_types TEXT DEFAULT ''");
   ensureColumn('options', 'inverter_only', 'inverter_only INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('options', 'mandatory_rule', "mandatory_rule TEXT DEFAULT ''");
+  ensureColumn('options', 'qty_per_compressor', 'qty_per_compressor INTEGER NOT NULL DEFAULT 0');
 }
 
 initSchema();

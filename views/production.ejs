@@ -11,7 +11,8 @@
   ];
 
   // Таблицу виброгасителей показываем, только если они вошли в спецификацию.
-  const VIBRATION_CODES = ['vibration_suction', 'vibration_discharge'];
+  // Старые коды — совместимость со спецификациями ранее сохранённых КП.
+  const VIBRATION_CODES = ['vibration', 'vibration_suction', 'vibration_discharge'];
   const vibrationInBom = result.bom.some(i => VIBRATION_CODES.includes(i.option_code));
 %>
 
@@ -82,7 +83,21 @@
   </section>
 </div>
 
-<section class="panel panel--flush">
+<section class="panel u-mt-6">
+  <div class="panel__head">
+    <div class="panel__titles">
+      <h3 class="panel__title">Гидравлическая схема</h3>
+      <p class="panel__sub">
+        Собирается автоматически по спецификации: номера позиций расшифрованы в таблице под схемой
+      </p>
+    </div>
+  </div>
+  <div class="panel__body">
+    <%- include('partials/schematic', { schematic: buildSchematic(result) }) %>
+  </div>
+</section>
+
+<section class="panel panel--flush u-mt-6">
   <div class="list-head">
     <span class="list-head__title">Полная спецификация (BOM)</span>
     <span class="list-head__meta">Позиций: <b class="num"><%= result.bom.length %></b></span>

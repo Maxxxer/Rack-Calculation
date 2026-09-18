@@ -160,9 +160,18 @@
         </tbody>
       </table>
     </section>
-<section class="doc-section">
+
+    <section class="doc-section">
       <div class="doc-section__head">
         <span class="doc-section__num">04</span>
+        <span class="doc-section__title">Гидравлическая схема</span>
+      </div>
+      <%- include('partials/schematic', { schematic: buildSchematic(result) }) %>
+    </section>
+
+    <section class="doc-section">
+      <div class="doc-section__head">
+        <span class="doc-section__num">05</span>
         <span class="doc-section__title">Спецификация оборудования</span>
       </div>
       <table class="doc-table">

@@ -27,6 +27,12 @@
  *  { "always": true, "max_tevap": -35, "min_tevap": 0, "min_compressors": 2,
  *    "compressor_types": ["screw"], "refrigerants": ["R717"],
  *    "min_kw": 50, "max_kw": 100, "max_tcond": 25 }
+ *
+ * mandatory_rule — то же правило, но при его выполнении опция становится
+ * обязательной: убирается из окна «Опции» и переносится в «Стандартную
+ * комплектацию» (маслоотделитель, масляный ресивер и регуляторы уровня масла
+ * при двух и более спиральных или поршневых компрессорах).
+ * qty_per_compressor — количество позиции равно числу компрессоров.
  */
 'use strict';
 
@@ -123,22 +129,38 @@ function resolveVibrationPlan(ctx, line) {
   });
 }
 
-/** Позиции BOM по виброгасителям одной линии (по одному на каждый компрессор) */
+// Виброгасители: если у опции не задана конкретная линия, позиции подбираются
+// и на всасывании, и на нагнетании (одна опция — обе линии).
+const VIBRATION_LINES = ['suction', 'discharge'];
+
+/**
+ * Позиции BOM по виброгасителям: по одному на каждый компрессор отдельно для
+ * каждой линии. Наименование берётся из подбора (vibration.aggregate) — в нём
+ * указаны линия, артикул и присоединительный размер, поэтому позиции линий
+ * различаются, даже когда артикул совпадает.
+ */
 function vibrationItems(opt, ctx, flags) {
-  const plan = resolveVibrationPlan(ctx, opt.pipe_line);
-  return plan.bomItems.map(entry => ({
-    option_code: opt.code,
-    section: opt.section,
-    component_category: opt.component_category,
-    article: entry.article,
-    name: entry.name,
-    qty: entry.qty,
-    unit_price_eur: +entry.price_eur.toFixed(2),
-    total_price_eur: +(entry.price_eur * entry.qty).toFixed(2),
-    mandatory: flags.mandatory,
-    auto: flags.auto,
-    selected: flags.selected
-  }));
+  const lines = opt.pipe_line ? [opt.pipe_line] : VIBRATION_LINES;
+  const items = [];
+  for (const line of lines) {
+    const plan = resolveVibrationPlan(ctx, line);
+    for (const entry of plan.bomItems) {
+      items.push({
+        option_code: opt.code,
+        section: opt.section,
+        component_category: opt.component_category,
+        article: entry.article,
+        name: entry.name,
+        qty: entry.qty,
+        unit_price_eur: +entry.price_eur.toFixed(2),
+        total_price_eur: +(entry.price_eur * entry.qty).toFixed(2),
+        mandatory: flags.mandatory,
+        auto: flags.auto,
+        selected: flags.selected
+      });
+    }
+  }
+  return items;
 }
 
 /** Подбор компонента для опций, размер которых определяется диаметром линии */
@@ -179,6 +201,40 @@ function optionAvailableForCompressors(opt, ctx) {
   return true;
 }
 
+/** Разбор JSON-правила из поля опции; пустое или битое значение — null */
+function parseRule(value) {
+  if (!value) return null;
+  try { return JSON.parse(value); } catch (_) { return null; }
+}
+
+// Коды опций, заменённых при развитии справочника: в сохранённых состояниях
+// формы и в старых КП могли остаться прежние значения. Приводим их к текущим.
+const RENAMED_CODES = {
+  vibration_suction: 'vibration',
+  vibration_discharge: 'vibration'
+};
+
+/** Приведение списка кодов опций к текущему справочнику (без дублей) */
+function normalizeOptionCodes(codes) {
+  const normalized = new Set();
+  for (const code of codes || []) {
+    if (!code) continue;
+    normalized.add(RENAMED_CODES[code] || code);
+  }
+  return [...normalized];
+}
+
+/**
+ * Опция обязательна для подобранных компрессоров.
+ * Кроме статического признака mandatory учитывается mandatory_rule: при двух и
+ * более спиральных или поршневых компрессорах маслоотделитель, масляный
+ * ресивер и регуляторы уровня масла входят в базовый состав агрегата.
+ */
+function optionMandatory(opt, ctx) {
+  if (opt.mandatory) return true;
+  return ruleMatches(parseRule(opt.mandatory_rule), ctx);
+}
+
 /**
  * Разрешение опций в позиции BOM.
  * @param {Object} ctx { refrigerant, tEvap, tCond, dTsh, dTsc, totalKw, totalCompressors,
@@ -189,29 +245,37 @@ function optionAvailableForCompressors(opt, ctx) {
  */
 function resolveOptions(ctx, selectedCodes = []) {
   const opts = db.prepare('SELECT * FROM options WHERE active = 1 ORDER BY sort_order, id').all();
+  const chosen = normalizeOptionCodes(selectedCodes);
   const items = [];
   const warnings = [];
+  // Состояние каждой опции для формы: доступность для выбранного типа
+  // компрессоров и обязательность (окно «Опции» или базовый состав)
+  const states = {};
 
   for (const opt of opts) {
     // Корпус выбирается в форме (или подбирается оркестратором) отдельно —
     // здесь он не обрабатывается, иначе позиция попала бы в BOM дважды.
     if (opt.code === 'housing') continue;
 
-    let rule = null;
-    try { rule = opt.auto_rule ? JSON.parse(opt.auto_rule) : null; } catch (_) { /* ignore */ }
-    const auto = ruleMatches(rule, ctx);
-    const selected = selectedCodes.includes(opt.code);
-    const mandatory = !!opt.mandatory;
+    const available = optionAvailableForCompressors(opt, ctx);
+    const mandatory = optionMandatory(opt, ctx);
+    states[opt.code] = { available, mandatory };
+
+    const auto = ruleMatches(parseRule(opt.auto_rule), ctx);
+    const selected = chosen.includes(opt.code);
     if (!(mandatory || selected || auto)) continue;
 
+    // Обязательная позиция и так входит в базовый состав — предупреждать не о чем
     if (auto && !selected && !mandatory) {
       warnings.push(`«${opt.name}» рекомендована для выбранного режима — проверьте включение.`);
     }
 
     // Опция существует не под все типы компрессоров: отжим клапанов — только
-    // поршневые, инвертор — поршневые и винтовые, а у спиральных только модели
-    // с поддержкой инвертора.
-    if (!optionAvailableForCompressors(opt, ctx)) {
+    // поршневые; инвертор — поршневые и винтовые, а у спиральных только модели
+    // с поддержкой инвертора; масляный ресивер и регуляторы уровня масла —
+    // только спиральные и поршневые (у винтовых масло охлаждается в контуре
+    // компрессора маслоохладителем через термостат ORV).
+    if (!available) {
       if (selected) {
         warnings.push(`«${opt.name}» недоступна для выбранных компрессоров (${describeCompressorTypes(ctx)}) — позиция не включена в спецификацию.`);
       }
@@ -244,6 +308,9 @@ function resolveOptions(ctx, selectedCodes = []) {
       }
     }
 
+    // Регуляторы уровня масла берутся по одному на каждый компрессор
+    if (opt.qty_per_compressor) qty = Math.max(1, ctx.totalCompressors || 1);
+
     const price = component ? component.price_eur : (opt.price_eur || 0);
     const code = component ? component.code : (opt.code.toUpperCase());
     const name = component ? `${opt.name} ${component.code}` : opt.name;
@@ -258,10 +325,11 @@ function resolveOptions(ctx, selectedCodes = []) {
     });
   }
 
-  return { items, warnings };
+  return { items, warnings, states };
 }
 
 module.exports = {
   resolveOptions, ruleMatches, pickComponent, ratedCapacity, kvrFactor,
-  optionAvailableForCompressors, parseTypeList
+  optionAvailableForCompressors, optionMandatory, parseRule, parseTypeList,
+  normalizeOptionCodes
 };

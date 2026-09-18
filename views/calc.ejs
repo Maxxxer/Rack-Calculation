@@ -16,10 +16,20 @@
   const selOpts = Array.isArray(f.selectedOptions) ? f.selectedOptions
                 : (f.options ? (Array.isArray(f.options) ? f.options : [f.options]) : []);
 
-  // Окно «Опции» — только выбираемые позиции. Обязательные выведены
-  // отдельным окном «Стандартная комплектация» справа.
-  const selectableOptions = options.filter(o => !o.mandatory);
-  const standardOptions = options.filter(o => o.mandatory);
+  // Окно «Опции» — только выбираемые позиции, доступные для подобранных
+  // компрессоров. Обязательные выводятся окном «Стандартная комплектация».
+  // Обязательность может быть динамической (mandatory_rule): при двух и более
+  // спиральных или поршневых компрессорах маслоотделитель, масляный ресивер и
+  // регуляторы уровня масла переходят из доп. опций в базовый состав. Состояние
+  // опций приходит в результате расчёта; до расчёта действует статический
+  // признак mandatory.
+  const optionStates = (result && result.optionStates) || {};
+  const stateOf = (o) => optionStates[o.code] || { available: true, mandatory: !!o.mandatory };
+  const selectableOptions = options.filter(o => {
+    const state = stateOf(o);
+    return state.available && !state.mandatory;
+  });
+  const standardOptions = options.filter(o => stateOf(o).mandatory);
 
   // Артикулы стандартных позиций известны только после расчёта.
   const standardArticles = new Map();
@@ -30,8 +40,14 @@
   }
 
   // Таблицу виброгасителей показываем, только если они вошли в спецификацию.
-  const VIBRATION_CODES = ['vibration_suction', 'vibration_discharge'];
+  // Старые коды оставлены для совместимости: в спецификациях сохранённых КП
+  // виброгасители записаны как две отдельные опции (на всасывании и нагнетании).
+  const VIBRATION_CODES = ['vibration', 'vibration_suction', 'vibration_discharge'];
   const vibrationInBom = !!result && result.bom.some(i => VIBRATION_CODES.includes(i.option_code));
+
+  // Гидравлическая схема собирается из спецификации расчёта
+  // (services/schematic.js): включённые опции сразу попадают на контур.
+  const schematic = buildSchematic(result);
 
   const COMPRESSOR_TYPES = [
     { value: 'any', label: 'Любой' },
@@ -272,7 +288,14 @@
       <p class="hint">
         Доступность опций зависит от типа компрессора: отжим клапанов — только для поршневых,
         инвертор — для поршневых и винтовых, а у спиральных только для моделей, рассчитанных
-        на работу с инвертором. Неподходящие опции скрываются автоматически.
+        на работу с инвертором. При двух и более спиральных или поршневых компрессорах
+        маслоотделитель, масляный ресивер и регуляторы уровня масла (по одному на компрессор)
+        автоматически переходят в стандартную комплектацию; у винтовых вместо них
+        предлагаются маслоохладитель и трёхходовой масляный термостат ORV.
+      </p>
+      <p class="hint">
+        Опция «Виброгасители» подбирает виброгасители сразу на обе линии —
+        всасывания и нагнетания, по одному на каждый компрессор.
       </p>
     </div>
   </section>
@@ -550,6 +573,23 @@
       </div>
     <% } %>
   </section>
+
+  <% if (schematic) { %>
+    <section class="panel u-mt-6">
+      <div class="panel__head">
+        <div class="panel__titles">
+          <h3 class="panel__title">Гидравлическая схема</h3>
+          <p class="panel__sub">
+            Схема собирается автоматически: на контуре показаны позиции, вошедшие в спецификацию,
+            номера расшифрованы в таблице под схемой
+          </p>
+        </div>
+      </div>
+      <div class="panel__body">
+        <%- include('partials/schematic', { schematic }) %>
+      </div>
+    </section>
+  <% } %>
 
   <% if (result.vibration && vibrationInBom) { %>
     <section class="panel panel--flush u-mt-6">

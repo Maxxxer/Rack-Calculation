@@ -10,15 +10,25 @@
 'use strict';
 
 const { db } = require('../db/database');
+const { normalizeOptionCodes } = require('./options');
 
-/** Последнее сохранённое состояние пользователя или null */
+/**
+ * Последнее сохранённое состояние пользователя или null.
+ * Коды опций приводятся к текущему справочнику: состояние могло быть записано
+ * до изменения списка опций (например, когда виброгасители были двумя
+ * отдельными опциями), и тогда галочки в форме не совпали бы с определением.
+ */
 function loadInput(userId) {
   if (!userId) return null;
   const row = db.prepare('SELECT input_json FROM calc_state WHERE user_id = ?').get(userId);
   if (!row) return null;
   try {
     const input = JSON.parse(row.input_json);
-    return input && typeof input === 'object' ? input : null;
+    if (!input || typeof input !== 'object') return null;
+    if (Array.isArray(input.selectedOptions)) {
+      input.selectedOptions = normalizeOptionCodes(input.selectedOptions);
+    }
+    return input;
   } catch (_) {
     return null;
   }

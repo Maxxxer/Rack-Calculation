@@ -12,6 +12,7 @@
 'use strict';
 
 const { normalizeTolerancePct } = require('./selection');
+const { normalizeOptionCodes } = require('./options');
 
 const VARIANT_SEPARATOR = ':';
 const DEFAULT_OPTIONS = Object.freeze([]);
@@ -81,7 +82,9 @@ function parseCalculationInput(body) {
       qty: Math.max(1, toInteger(source.compressorQty, 1))
     },
     variant: parseVariant(source.variant) || parseVariant(source.variantPinned) || parseFlatVariant(source),
-    selectedOptions: toOptions(source.options)
+    // Коды приводятся к текущему справочнику: в сохранённых состояниях формы
+    // могли остаться прежние коды опций (например, раздельные виброгасители).
+    selectedOptions: normalizeOptionCodes(toOptions(source.options))
   };
 }
 

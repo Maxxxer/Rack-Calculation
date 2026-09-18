@@ -21,6 +21,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 // Хелпер шаблонов: дюймовые размеры в «трубной» записи (2.125 → 2 1/8"), см. services/inch.js
 app.locals.inch = require('./services/inch').formatInch;
+// Гидравлическая схема собирается из результата расчёта в шаблонах
+app.locals.buildSchematic = require('./services/schematic').buildSchematic;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(fileUpload());

@@ -209,6 +209,9 @@ function calculateCore(input, chosenItem, discountPercent = 0) {
     piping: pipes,
     vibration: vibrationPlans,
     options: opts,
+    // Состояние опций для формы: доступность по типу компрессоров и
+    // обязательность (окно «Опции» против «Стандартной комплектации»)
+    optionStates: opts.states,
     bom,
     totals,
     deviationPct,
