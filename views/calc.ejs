@@ -41,11 +41,26 @@
   ];
   const typeLabel = (t) => (COMPRESSOR_TYPES.find(x => x.value === t) || {}).label || t;
 
+  // Порядок линий в таблице трубопроводов: нагнетание сверху, под ним
+  // жидкость, снизу всасывание.
   const PIPE_LINES = [
-    { key: 'suction', label: 'Всасывание' },
     { key: 'discharge', label: 'Нагнетание' },
-    { key: 'liquid', label: 'Жидкость' }
+    { key: 'liquid', label: 'Жидкость' },
+    { key: 'suction', label: 'Всасывание' }
   ];
+
+  // Выбранный вариант автоподбора: после расчёта приходит объектом в
+  // result.selectedVariant, при повторном выводе формы — полем «id:кол-во».
+  const variantKey = (id, qty) => (id ? `${id}:${qty || 1}` : '');
+  const selVariant = (() => {
+    const v = f.variant;
+    if (v && typeof v === 'object' && v.compressorId) return variantKey(v.compressorId, v.qty);
+    if (typeof v === 'string' && v) return v;
+    return '';
+  })();
+  const activeVariant = result && result.selectedVariant
+    ? variantKey(result.selectedVariant.compressorId, result.selectedVariant.qty)
+    : selVariant;
 %>
 
 <div class="page-head page-head--inline">
@@ -245,13 +260,20 @@
     <div class="panel__body">
       <div class="options-grid">
         <% selectableOptions.forEach(o => { %>
-          <label class="option-item">
+          <label class="option-item" data-option
+                 data-allowed-types="<%= o.allowed_types || '' %>"
+                 data-inverter-only="<%= o.inverter_only ? '1' : '0' %>">
             <input type="checkbox" name="options" value="<%= o.code %>"
                    <%= selOpts.includes(o.code) ? 'checked' : '' %>>
             <span class="option-item__text"><%= o.name %></span>
           </label>
         <% }) %>
       </div>
+      <p class="hint">
+        Доступность опций зависит от типа компрессора: отжим клапанов — только для поршневых,
+        инвертор — для поршневых и винтовых, а у спиральных только для моделей, рассчитанных
+        на работу с инвертором. Неподходящие опции скрываются автоматически.
+      </p>
     </div>
   </section>
 
@@ -280,6 +302,8 @@
       </ul>
     </div>
   </section>
+
+  <input type="hidden" name="variantPinned" value="<%= selVariant %>">
 
   <div class="action-bar">
     <button type="submit" class="btn btn--primary btn--lg">
@@ -311,6 +335,41 @@
         </ul>
       </div>
     </div>
+  <% } %>
+
+  <% if (result.variantPreviews && result.variantPreviews.length) { %>
+    <section class="panel panel--flush u-mb-6">
+      <div class="list-head">
+        <span class="list-head__title">Варианты автоподбора — от дешёвого к дорогому</span>
+        <span class="list-head__meta">
+          Цена — за базовый состав. Нажмите на агрегат, чтобы собрать остальной подбор и итоговую цену.
+        </span>
+      </div>
+      <div class="variant-grid">
+        <% result.variantPreviews.forEach((v, i) => {
+             const value = variantKey(v.compressorId, v.qty);
+             const isActive = value === activeVariant; %>
+          <button type="submit" form="calcForm"
+                  class="variant-card<%= isActive ? ' variant-card--active' : '' %>"
+                  name="variant" value="<%= value %>"
+                  aria-pressed="<%= isActive ? 'true' : 'false' %>">
+            <span class="variant-card__rank">Вариант <%= i + 1 %></span>
+            <span class="variant-card__model">
+              <%= v.manufacturer %> <%= v.model %><% if (v.qty > 1) { %> × <%= v.qty %><% } %>
+            </span>
+            <span class="variant-card__spec">
+              <b class="num"><%= v.totalKw %></b> кВт ·
+              <b class="num"><%= v.oversizePct > 0 ? '+' : '' %><%= v.oversizePct %>%</b> к требуемой
+            </span>
+            <span class="variant-card__price">
+              <% if (v.baseTotalEur != null) { %><b class="num"><%= v.baseTotalEur %></b> EUR<% } else { %>—<% } %>
+              <span class="variant-card__note">базовый состав</span>
+            </span>
+            <% if (isActive) { %><span class="variant-card__flag">выбран</span><% } %>
+          </button>
+        <% }) %>
+      </div>
+    </section>
   <% } %>
 
   <div class="kpi-grid">
@@ -451,7 +510,7 @@
               <td><%= line.label %></td>
               <td class="num"><%= p.massFlowKgh %></td>
               <td class="num"><%= p.vdot_m3h %></td>
-              <td class="num num--strong"><%= r.size_in %></td>
+              <td class="num num--strong"><%= inch(r.size_in) %></td>
               <td class="num">Ø<%= r.od_mm %>×<%= r.wall_mm %></td>
               <td class="num"><%= r.v %></td>
               <td>
@@ -477,11 +536,11 @@
                 <div class="line-item">
                   <span class="line-item__title"><%= ind.label %></span>
                   <span class="line-item__meta">
-                    всасывание <%= ind.suction.recommended.size_in %>" (<%= ind.suction.recommended.v %> м/с)
-                    · нагнетание <%= ind.discharge.recommended.size_in %>" (<%= ind.discharge.recommended.v %> м/с)
+                    нагнетание <%= inch(ind.discharge.recommended.size_in) %> (<%= ind.discharge.recommended.v %> м/с)
+                    · всасывание <%= inch(ind.suction.recommended.size_in) %> (<%= ind.suction.recommended.v %> м/с)
                   </span>
                   <span class="line-item__value">
-                    <%= ind.suction.recommended.size_in %> / <%= ind.discharge.recommended.size_in %>"
+                    <%= inch(ind.discharge.recommended.size_in) %> / <%= inch(ind.suction.recommended.size_in) %>
                   </span>
                 </div>
               <% }) %>
@@ -573,8 +632,10 @@
       tolerancePct: result.input.tolerancePct,
       housingCode: result.input.housingCode || '', mode: result.input.mode,
       autoType: result.input.auto.type, autoManufacturer: result.input.auto.manufacturerId,
+      autoMaxQty: result.input.auto.maxQty,
       manualType: result.input.manual.type || 'any', manualManufacturer: result.input.manual.manufacturerId || 'any',
-      compressorId: result.input.manual.compressorId || '', compressorQty: result.input.manual.qty
+      compressorId: result.input.manual.compressorId || '', compressorQty: result.input.manual.qty,
+      variant: selVariant
     }).forEach(([k, v]) => { %>
       <input type="hidden" name="<%= k %>" value="<%= v %>">
     <% }) %>
@@ -594,11 +655,57 @@
 <% } %>
 
 <script>
-function toggleMode() {
+// Дополнительные поля опции: к каким типам компрессоров она применима
+// (data-allowed-types) и требуется ли инверторная модель (data-inverter-only).
+// Пользователю показываются только применимые опции: отжим клапанов — для
+// поршневых, инвертор — для поршневых и винтовых, а у спиральных только для
+// моделей, рассчитанных на работу с инвертором; сервер проверяет то же правило.
+function currentTypeValue() {
   const mode = document.querySelector('input[name="mode"]:checked').value;
+  const select = document.getElementById(mode === 'manual' ? 'manualType' : 'autoType');
+  return select ? select.value : 'any';
+}
+
+function currentMode() {
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+// Для ручного выбора известна конкретная модель: у спиральных важно, есть ли
+// у неё поддержка инвертора. null — модель ещё не выбрана.
+function manualModelSupportsInverter() {
+  const sel = document.getElementById('compressorSelect');
+  const opt = sel && sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return null;
+  if (opt.dataset.type !== 'scroll') return true;
+  return opt.dataset.inverterCapable === '1';
+}
+
+function syncOptionAvailability() {
+  const type = currentTypeValue();
+  const inverterSupported = currentMode() === 'manual' ? manualModelSupportsInverter() : null;
+
+  document.querySelectorAll('[data-option]').forEach(item => {
+    const allowed = (item.dataset.allowedTypes || '').split(',').filter(Boolean);
+    const inverterOnly = item.dataset.inverterOnly === '1';
+
+    let visible = true;
+    if (allowed.length && type !== 'any' && !allowed.includes(type)) visible = false;
+    if (visible && inverterOnly && type === 'scroll' && inverterSupported === false) visible = false;
+
+    item.classList.toggle('is-hidden', !visible);
+    if (!visible) {
+      const input = item.querySelector('input[type="checkbox"]');
+      if (input) input.checked = false;
+    }
+  });
+}
+
+function toggleMode() {
+  const mode = currentMode();
   document.getElementById('autoBlock').classList.toggle('is-hidden', mode !== 'auto');
   document.getElementById('manualBlock').classList.toggle('is-hidden', mode !== 'manual');
   if (mode === 'manual') loadCompressors();
+  syncOptionAvailability();
 }
 
 function loadCompressors(preserveId) {
@@ -617,15 +724,18 @@ function loadCompressors(preserveId) {
         opt.value = '';
         opt.textContent = '— нет моделей по фильтру —';
         sel.appendChild(opt);
-        return;
+      } else {
+        d.compressors.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.manufacturer + ' ' + c.model;
+          opt.dataset.type = c.type;
+          opt.dataset.inverterCapable = c.inverter_capable ? '1' : '0';
+          if (preserveId && String(c.id) === String(preserveId)) opt.selected = true;
+          sel.appendChild(opt);
+        });
       }
-      d.compressors.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.textContent = c.manufacturer + ' ' + c.model;
-        if (preserveId && String(c.id) === String(preserveId)) opt.selected = true;
-        sel.appendChild(opt);
-      });
+      syncOptionAvailability();
     })
     .catch(() => {
       const sel = document.getElementById('compressorSelect');
@@ -634,18 +744,24 @@ function loadCompressors(preserveId) {
       opt.value = '';
       opt.textContent = '— не удалось загрузить список моделей —';
       sel.appendChild(opt);
+      syncOptionAvailability();
     });
 }
 
 ['refrigerantSelect', 'manualType', 'manualManufacturer'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
-    if (document.querySelector('input[name="mode"]:checked').value === 'manual') loadCompressors();
+    if (currentMode() === 'manual') loadCompressors();
+    syncOptionAvailability();
   });
+});
+
+['autoType', 'compressorSelect'].forEach(id => {
+  document.getElementById(id).addEventListener('change', syncOptionAvailability);
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   toggleMode();
-  if (document.querySelector('input[name="mode"]:checked').value === 'manual') {
+  if (currentMode() === 'manual') {
     loadCompressors('<%= manual.compressorId || "" %>');
   }
 });

@@ -97,18 +97,25 @@ function normalizeTolerancePct(value) {
 /**
  * Автоподбор: перебор моделей и количества 1..maxQty.
  *
- * Варианты, попавшие в допуск по мощности (требуемая ±tolerancePct %), идут
- * первыми — из них выбирается ближайший к требуемой мощности, затем самый
- * дешёвый. Если в допуск не попал никто, дальше идут остальные варианты,
- * тоже по близости к требуемой мощности: подбор всегда что-то предложит.
+ * Варианты упорядочены по цене — от самого дешёвого к самому дорогому:
+ * инженеру показывается список из 5 вариантов, и первый уже готов к расчёту.
+ * Подходящими считаются только варианты, которые не теряют требуемую мощность
+ * (не ниже MIN_CAPACITY_PCT %) и не перебирают её сверх MAX_OVERSIZE_PCT %;
+ * варианты, попавшие в допуск ±tolerancePct %, идут перед остальными — при
+ * равной цене они предпочтительнее.
+ *
+ * @param {boolean} inverterOnly — оставить только модели, рассчитанные на
+ *  работу с инвертором (спиральные без поддержки инвертора отбрасываются)
  */
 function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerId,
-                      maxQty = 3, topN = 5, tolerancePct = DEFAULT_TOLERANCE_PCT }) {
+                      maxQty = 3, topN = 5, tolerancePct = DEFAULT_TOLERANCE_PCT,
+                      inverterOnly = false }) {
   const tol = normalizeTolerancePct(tolerancePct) / 100;
   const minKw = requiredKw * (1 - tol);
   const maxKw = requiredKw * (1 + tol);
 
-  const candidates = findCompressors({ refrigerant, type, manufacturerId, tEvap });
+  const candidates = findCompressors({ refrigerant, type, manufacturerId, tEvap })
+    .filter(c => !inverterOnly || compressorSupportsInverter(c));
   const inTolerance = [];
   const outside = [];
   for (const c of candidates) {
@@ -130,13 +137,25 @@ function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerI
     }
   }
 
-  // Близость к требуемой мощности важнее цены: сначала отклонение, потом цена
-  const byDeviation = (a, b) =>
-    (Math.abs(a.oversizePct) - Math.abs(b.oversizePct)) || (a.priceEur - b.priceEur);
-  inTolerance.sort(byDeviation);
-  outside.sort(byDeviation);
+  // Дешевле — выше в списке; при равной цене точнее по мощности
+  const byPrice = (a, b) =>
+    (a.priceEur - b.priceEur) || (Math.abs(a.oversizePct) - Math.abs(b.oversizePct));
+  inTolerance.sort(byPrice);
+  outside.sort(byPrice);
 
   return [...inTolerance, ...outside].slice(0, topN);
+}
+
+/**
+ * Компрессор работает с инвертором.
+ * У поршневых и винтовых инвертор внешний — ограничений нет; у спиральных
+ * инвертор встроен в конкретную модель, поэтому нужен признак
+ * compressors.inverter_capable.
+ */
+function compressorSupportsInverter(compressor) {
+  if (!compressor) return false;
+  if (compressor.type === 'scroll') return !!compressor.inverter_capable;
+  return true;
 }
 
 /**
@@ -167,6 +186,7 @@ function evaluateSelection({ refrigerant, tEvap, tCond, items }) {
       mass_flow_kgh: perf.mass_flow_kgh, volume_m3h: perf.volume_m3h,
       suction_d_in: c.suction_d_in, discharge_d_in: c.discharge_d_in,
       max_current_a: c.max_current_a,
+      inverter_capable: c.inverter_capable ? 1 : 0,
       price_eur: c.price_eur, total_price_eur: c.price_eur * qty,
       displacement_m3h: c.displacement_m3h
     });
@@ -188,5 +208,6 @@ function evaluateSelection({ refrigerant, tEvap, tCond, items }) {
 
 module.exports = {
   evalPoly, compressorPerformance, findCompressors, autoSelect, evaluateSelection,
-  normalizeTolerancePct, DEFAULT_TOLERANCE_PCT
+  normalizeTolerancePct, compressorSupportsInverter,
+  DEFAULT_TOLERANCE_PCT, MIN_CAPACITY_PCT, MAX_OVERSIZE_PCT
 };

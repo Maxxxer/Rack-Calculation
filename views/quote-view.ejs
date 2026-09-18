@@ -58,8 +58,8 @@
         <tr><td>COP</td><td><%= result.selection.totals.cop %></td></tr>
         <tr><td>Массовый расход</td><td><%= result.selection.totals.mass_flow_kgh %> кг/ч</td></tr>
         <tr>
-          <td>Трубопроводы (всас / нагн / жидк)</td>
-          <td><%= result.piping.common.suction.recommended.size_in %> / <%= result.piping.common.discharge.recommended.size_in %> / <%= result.piping.common.liquid.recommended.size_in %>"</td>
+          <td>Трубопроводы (нагн / жидк / всас)</td>
+          <td><%= inch(result.piping.common.discharge.recommended.size_in) %> / <%= inch(result.piping.common.liquid.recommended.size_in) %> / <%= inch(result.piping.common.suction.recommended.size_in) %></td>
         </tr>
       </tbody>
     </table>

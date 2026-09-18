@@ -88,6 +88,17 @@
         </div>
 
         <div class="field field--wide">
+          <label class="choice" for="importInverter">
+            <input type="checkbox" id="importInverter" name="inverterCapable" value="1">
+            <span>Модели файла рассчитаны на работу с инвертором</span>
+          </label>
+          <p class="field__hint">
+            Отметьте для инверторных серий: опция «Инвертор» доступна для спиральных
+            компрессоров только у моделей с поддержкой инвертора.
+          </p>
+        </div>
+
+        <div class="field field--wide">
           <label class="field__label" for="importFile">Файл Excel (.xlsx, .xls) <span class="field__req">*</span></label>
           <input type="file" id="importFile" name="file" accept=".xlsx,.xls" required>
         </div>

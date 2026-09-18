@@ -6,10 +6,11 @@
   const t = result.totals;
   const s = result.selection.totals;
   const quoteUrl = '/quotes/' + encodeURIComponent(q.number);
+  // Порядок линий в печатной форме: нагнетание, жидкость, всасывание
   const pipeLines = [
-    { label: 'Всасывание', key: 'suction' },
     { label: 'Нагнетание', key: 'discharge' },
-    { label: 'Жидкость', key: 'liquid' }
+    { label: 'Жидкость', key: 'liquid' },
+    { label: 'Всасывание', key: 'suction' }
   ];
 %>
 <!DOCTYPE html>
@@ -139,7 +140,7 @@
           <tr>
             <th>Линия</th>
             <th class="num">Расход, кг/ч</th>
-            <th class="num">Ø, дюймы</th>
+            <th class="num">Ø</th>
             <th>Труба, мм</th>
             <th class="num">Скорость, м/с</th>
           </tr>
@@ -151,7 +152,7 @@
             <tr>
               <td><%= line.label %></td>
               <td class="num"><%= p.massFlowKgh %></td>
-              <td class="num strong"><%= r.size_in %></td>
+              <td class="num strong"><%= inch(r.size_in) %></td>
               <td>Ø<%= r.od_mm %>×<%= r.wall_mm %></td>
               <td class="num"><%= r.v %></td>
             </tr>

@@ -149,6 +149,36 @@ function pipeSizedComponent(opt, ctx, scaleQty) {
   return { component, qty };
 }
 
+/** Список типов компрессоров из поля allowed_types ('recip,screw') */
+function parseTypeList(value) {
+  return String(value || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+const COMPRESSOR_TYPE_LABELS = { scroll: 'спиральные', screw: 'винтовые', recip: 'поршневые' };
+
+/** Подпись типов компрессоров для предупреждений */
+function describeCompressorTypes(ctx) {
+  const types = ctx.compressorTypes || [];
+  if (!types.length) return 'тип не определён';
+  return types.map(t => COMPRESSOR_TYPE_LABELS[t] || t).join(', ');
+}
+
+/**
+ * Доступность опции для подобранных компрессоров.
+ * allowed_types — типы, для которых опция вообще существует (пусто — любые);
+ * inverter_only — для спиральных нужна модель, рассчитанная на инвертор
+ * (у поршневых и винтовых инвертор внешний, ограничение не действует).
+ */
+function optionAvailableForCompressors(opt, ctx) {
+  const allowed = parseTypeList(opt.allowed_types);
+  if (allowed.length && !(ctx.compressorTypes || []).every(t => allowed.includes(t))) return false;
+  if (opt.inverter_only && ctx.allInverterCapable === false) return false;
+  return true;
+}
+
 /**
  * Разрешение опций в позиции BOM.
  * @param {Object} ctx { refrigerant, tEvap, tCond, dTsh, dTsc, totalKw, totalCompressors,
@@ -176,6 +206,16 @@ function resolveOptions(ctx, selectedCodes = []) {
 
     if (auto && !selected && !mandatory) {
       warnings.push(`«${opt.name}» рекомендована для выбранного режима — проверьте включение.`);
+    }
+
+    // Опция существует не под все типы компрессоров: отжим клапанов — только
+    // поршневые, инвертор — поршневые и винтовые, а у спиральных только модели
+    // с поддержкой инвертора.
+    if (!optionAvailableForCompressors(opt, ctx)) {
+      if (selected) {
+        warnings.push(`«${opt.name}» недоступна для выбранных компрессоров (${describeCompressorTypes(ctx)}) — позиция не включена в спецификацию.`);
+      }
+      continue;
     }
 
     // Виброгасители: подбор индивидуально по каждому компрессору,
@@ -221,4 +261,7 @@ function resolveOptions(ctx, selectedCodes = []) {
   return { items, warnings };
 }
 
-module.exports = { resolveOptions, ruleMatches, pickComponent, ratedCapacity, kvrFactor };
+module.exports = {
+  resolveOptions, ruleMatches, pickComponent, ratedCapacity, kvrFactor,
+  optionAvailableForCompressors, parseTypeList
+};

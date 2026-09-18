@@ -3,10 +3,11 @@
 <%
   const t = result.totals;
   const quoteUrl = '/quotes/' + encodeURIComponent(q.number);
+  // Порядок линий: нагнетание, жидкость, всасывание
   const pipingLines = [
-    { label: 'Всасывание', key: 'suction' },
     { label: 'Нагнетание', key: 'discharge' },
-    { label: 'Жидкость', key: 'liquid' }
+    { label: 'Жидкость', key: 'liquid' },
+    { label: 'Всасывание', key: 'suction' }
   ];
 
   // Таблицу виброгасителей показываем, только если они вошли в спецификацию.
@@ -72,7 +73,7 @@
                const r = p.recommended; %>
             <tr>
               <td><%= line.label %></td>
-              <td><%= r.size_in %>" (Ø<%= r.od_mm %>×<%= r.wall_mm %>)</td>
+              <td><%= inch(r.size_in) %> (Ø<%= r.od_mm %>×<%= r.wall_mm %>)</td>
             </tr>
           <% }) %>
         </tbody>

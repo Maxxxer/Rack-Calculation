@@ -89,6 +89,7 @@ function initSchema() {
     poly_mass TEXT,                               -- JSON [C1..C10], кг/ч
     poly_capacity TEXT,                           -- JSON [C1..C10], Вт (или кВт при multiplier=1)
     poly_multiplier REAL DEFAULT 1,               -- делитель для перевода в кВт (1000 для Вт)
+    inverter_capable INTEGER NOT NULL DEFAULT 0,  -- модель рассчитана на работу с инвертором
     active INTEGER NOT NULL DEFAULT 1,
     UNIQUE(manufacturer_id, model, refrigerant_code)
   );
@@ -138,6 +139,8 @@ function initSchema() {
     price_eur REAL DEFAULT 0,                     -- цена по умолчанию (если нет в каталоге)
     auto_rule TEXT DEFAULT '',                    -- JSON правило
     mandatory INTEGER NOT NULL DEFAULT 0,
+    allowed_types TEXT DEFAULT '',                -- типы КМ, для которых опция существует ('' — любые)
+    inverter_only INTEGER NOT NULL DEFAULT 0,     -- для спиральных требуется инверторная модель
     sort_order INTEGER DEFAULT 0,
     active INTEGER NOT NULL DEFAULT 1
   );
@@ -161,6 +164,15 @@ function initSchema() {
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  -- ============ ПОСЛЕДНИЕ ВВЕДЁННЫЕ ЗНАЧЕНИЯ КАЛЬКУЛЯТОРА ============
+  -- Одна запись на пользователя: окна 01 «Режим работы», 02 «Компрессоры» и
+  -- 03 «Опции» восстанавливаются при следующем открытии калькулятора.
+  CREATE TABLE IF NOT EXISTS calc_state (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    input_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
   `);
 }
 
@@ -174,18 +186,20 @@ function syncOptions() {
   if (!OPTIONS.length) return;
   const upsert = db.prepare(`
     INSERT INTO options
-    (code, name, section, component_category, sizing, pipe_line, description, price_eur, auto_rule, mandatory, sort_order)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    (code, name, section, component_category, sizing, pipe_line, description, price_eur,
+     auto_rule, mandatory, allowed_types, inverter_only, sort_order)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(code) DO UPDATE SET
       name=excluded.name, section=excluded.section,
       component_category=excluded.component_category, sizing=excluded.sizing,
       pipe_line=excluded.pipe_line, description=excluded.description,
       price_eur=excluded.price_eur, auto_rule=excluded.auto_rule,
-      mandatory=excluded.mandatory, sort_order=excluded.sort_order, active=1`);
+      mandatory=excluded.mandatory, allowed_types=excluded.allowed_types,
+      inverter_only=excluded.inverter_only, sort_order=excluded.sort_order, active=1`);
   for (const o of OPTIONS) {
     upsert.run(o.code, o.name, o.section, o.component_category || null, o.sizing || 'none',
       o.pipe_line || null, o.description || '', o.price_eur || 0, o.auto_rule || '',
-      o.mandatory || 0, o.sort_order || 0);
+      o.mandatory || 0, o.allowed_types || '', o.inverter_only || 0, o.sort_order || 0);
   }
   // Удаляем опции, которых больше нет в определениях (например, старая 'vibration')
   const codes = OPTIONS.map(o => o.code);
@@ -218,7 +232,27 @@ function fixCompressorPorts() {
   return rows.length;
 }
 
+/** Добавление колонки в существующую таблицу (в SQLite нет IF NOT EXISTS для ALTER) */
+function ensureColumn(table, column, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some(c => c.name === column)) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+  return true;
+}
+
+/**
+ * Миграция уже созданной базы: колонки, появившиеся в схеме позже.
+ * `CREATE TABLE IF NOT EXISTS` их не добавляет, поэтому досоздаём явно —
+ * иначе старт приложения на существующей базе упадёт на первом же запросе.
+ */
+function migrateSchema() {
+  ensureColumn('compressors', 'inverter_capable', 'inverter_capable INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('options', 'allowed_types', "allowed_types TEXT DEFAULT ''");
+  ensureColumn('options', 'inverter_only', 'inverter_only INTEGER NOT NULL DEFAULT 0');
+}
+
 initSchema();
+migrateSchema();
 syncOptions();
 
 const fixedPorts = fixCompressorPorts();

@@ -19,6 +19,8 @@ const PORT = process.env.PORT || 3000;
 // ---------- Конфигурация ----------
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+// Хелпер шаблонов: дюймовые размеры в «трубной» записи (2.125 → 2 1/8"), см. services/inch.js
+app.locals.inch = require('./services/inch').formatInch;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(fileUpload());

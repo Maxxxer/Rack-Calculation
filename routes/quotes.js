@@ -7,7 +7,7 @@
 const express = require('express');
 const { db } = require('../db/database');
 const { runCalculation } = require('../services/calc');
-const { normalizeTolerancePct } = require('../services/selection');
+const { parseCalculationInput } = require('../services/calcInput');
 const { nextQuoteNumber } = require('../services/pricing');
 
 const router = express.Router();
@@ -15,21 +15,10 @@ const router = express.Router();
 // Сохранить расчет как КП (черновик)
 router.post('/save', (req, res) => {
   try {
-    const b = req.body;
-    const input = {
-      refrigerant: b.refrigerant,
-      tEvap: parseFloat(b.tEvap),
-      tCond: parseFloat(b.tCond),
-      dTsh: parseFloat(b.dTsh) || 10,
-      dTsc: parseFloat(b.dTsc) || 0,
-      requiredKw: parseFloat(b.requiredKw) || 0,
-      tolerancePct: normalizeTolerancePct(b.tolerancePct),
-      housingCode: b.housingCode || null,
-      mode: b.mode === 'manual' ? 'manual' : 'auto',
-      auto: { type: b.autoType || 'any', manufacturerId: b.autoManufacturer || 'any', maxQty: 3 },
-      manual: { compressorId: b.compressorId ? parseInt(b.compressorId, 10) : null, qty: parseInt(b.compressorQty, 10) || 1 },
-      selectedOptions: Array.isArray(b.options) ? b.options : (b.options ? [b.options] : [])
-    };
+    // Тот же разбор формы, что и в калькуляторе: вместе с параметрами в КП
+    // переносится выбранный вариант автоподбора, иначе сохранённый расчёт
+    // соберётся под другой компрессор.
+    const input = parseCalculationInput(req.body);
     const result = runCalculation(input, res.locals.user.discount_percent);
     const number = nextQuoteNumber();
     db.prepare(`

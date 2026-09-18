@@ -8,6 +8,13 @@ const bcrypt = require('bcryptjs');
 const { db } = require('../db/database');
 const { notifyNewRegistration } = require('../bot/telegram');
 
+/**
+ * Срок жизни сессии при включённой галочке «Запомнить меня» — 30 дней.
+ * Без галочки ставится сессионная cookie: она живёт до закрытия браузера,
+ * что и ожидается от «обычного» входа на общем компьютере.
+ */
+const REMEMBER_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
+
 const router = express.Router();
 
 router.get('/login', (req, res) => {
@@ -16,17 +23,29 @@ router.get('/login', (req, res) => {
 
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
-  const u = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email || '').trim().toLowerCase());
+  const emailValue = String(email || '').trim();
+  const remember = req.body.remember === 'on' || req.body.remember === 'true' || req.body.remember === '1';
+  const u = db.prepare('SELECT * FROM users WHERE email = ?').get(emailValue.toLowerCase());
+  const renderError = (error) => res.render('login', { error, email: emailValue, remember });
+
   if (!u || !bcrypt.compareSync(password || '', u.password_hash)) {
-    return res.render('login', { error: 'Неверный email или пароль' });
+    return renderError('Неверный email или пароль');
   }
   if (u.status === 'pending') {
-    return res.render('login', { error: 'Регистрация ожидает подтверждения администратором' });
+    return renderError('Регистрация ожидает подтверждения администратором');
   }
   if (u.status === 'rejected') {
-    return res.render('login', { error: 'Регистрация отклонена администратором' });
+    return renderError('Регистрация отклонена администратором');
   }
+
   req.session.userId = u.id;
+  if (remember) {
+    req.session.cookie.maxAge = REMEMBER_MAX_AGE_MS;
+  } else {
+    // Сессионная cookie: живёт до закрытия браузера
+    req.session.cookie.maxAge = null;
+    req.session.cookie.expires = null;
+  }
   res.redirect('/calc');
 });
 

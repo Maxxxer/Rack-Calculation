@@ -51,7 +51,7 @@
                 <tr>
                   <td class="cell-code"><%= c.code %></td>
                   <td class="cell-name"><%= c.name %></td>
-                  <td class="num"><%= c.size_in != null ? c.size_in : '—' %></td>
+                  <td class="num"><%= c.size_in != null ? inch(c.size_in) : '—' %></td>
                   <td class="num"><%= c.capacity_kw != null ? c.capacity_kw : '—' %></td>
                   <td class="num"><%= c.capacity_kw2 != null ? c.capacity_kw2 : '—' %></td>
                   <td class="num"><%= c.volume_l != null ? c.volume_l : '—' %></td>

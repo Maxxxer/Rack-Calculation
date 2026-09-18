@@ -21,6 +21,15 @@
  *   0 — обычная опция: пользователь отмечает её сам
  * Если у опции задано правило auto_rule, позиция добавляется в спецификацию
  * автоматически, когда режим работы подходит под правило.
+ *
+ * allowed_types / inverter_only — доступность опции по типу компрессоров:
+ *   allowed_types — список типов через запятую ('recip', 'screw', 'scroll');
+ *                   пусто — опция доступна для любых компрессоров;
+ *   inverter_only — 1: опция работает только с инверторными моделями, поэтому
+ *                   для спиральных компрессоров требуется конкретная модель,
+ *                   рассчитанная на инвертор (compressors.inverter_capable).
+ *                   Для поршневых и винтовых ограничение не действует —
+ *                   инвертор там внешний.
  */
 'use strict';
 
@@ -43,10 +52,16 @@ const OPTIONS = [
   { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compressors',
     component_category: null, sizing: 'none', price_eur: 180,
     auto_rule: '{"min_compressors":2}', sort_order: 12 },
+  // Инвертор: поршневые и винтовые — всегда, спиральные — только модели с
+  // поддержкой инвертора (inverter_only).
   { code: 'inverter', name: 'Инвертор', section: 'compressors', component_category: null,
-    sizing: 'none', price_eur: 650, auto_rule: '', sort_order: 13 },
+    sizing: 'none', price_eur: 650, auto_rule: '',
+    allowed_types: 'recip,screw,scroll', inverter_only: 1, sort_order: 13 },
+  // Отжим клапанов — механика поршневого компрессора, для остальных типов
+  // не применяется.
   { code: 'unloader', name: 'Отжим клапанов', section: 'compressors', component_category: null,
-    sizing: 'none', price_eur: 210, auto_rule: '', sort_order: 14 },
+    sizing: 'none', price_eur: 210, auto_rule: '',
+    allowed_types: 'recip', sort_order: 14 },
   { code: 'check_valves', name: 'Обратные клапана после КМ', section: 'compressors',
     component_category: 'check_valve', sizing: 'pipe_per_compressor', pipe_line: 'discharge',
     auto_rule: '{"min_compressors":2}', sort_order: 15 },
@@ -99,7 +114,7 @@ const OPTIONS = [
   { code: 'discharge_valve', name: 'Шаровый вентиль на нагнетании на выходе из агрегата',
     section: 'extra', component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'discharge',
     auto_rule: '', sort_order: 61 },
-  { code: 'level_switch', name: 'Реле уровня фреона', section: 'extra', component_category: null,
+  { code: 'level_switch', name: 'Реле уровня хладагента', section: 'extra', component_category: null,
     sizing: 'none', price_eur: 145, auto_rule: '', sort_order: 62 },
   { code: 'solenoid', name: 'Соленоидный вентиль на линии жидкости', section: 'extra',
     component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',

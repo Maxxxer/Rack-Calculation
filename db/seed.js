@@ -130,6 +130,22 @@ function typeFromModel(mfr, model) {
   return 'scroll';                             // Xecom XR/XFV — спиральные
 }
 
+/**
+ * Модель рассчитана на работу с инвертором.
+ *
+ * Признак хранится в базе (compressors.inverter_capable) и управляет
+ * доступностью опции «Инвертор»: у поршневых и винтовых инвертор внешний, а
+ * спиральному компрессору нужна именно инверторная модель. Инверторными
+ * считаются серии с явным частотным регулированием — Xecom XFV,
+ * Invotech IV-V, Copeland ZPV.
+ */
+function inverterCapable(model) {
+  if (/^XFV/i.test(model)) return 1;    // Xecom XFV — инверторная спиральная серия
+  if (/^IV-V/i.test(model)) return 1;   // Invotech IV-V — винтовые с инвертором
+  if (/^ZPV/i.test(model)) return 1;    // Copeland ZPV — инверторные спиральные
+  return 0;
+}
+
 // Модели производителей, для которых коэффициенты генерируются физической
 // моделью (polyfit) — винтовые/спиральные/поршневые.
 // [производитель, модель, тип, хладагент, Vh м³/ч, dSuction_in, dDisch_in, Imax,
@@ -164,12 +180,13 @@ function seedGeneratedCompressors() {
     (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
      displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
      min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
-     poly_capacity, poly_power, poly_mass, poly_multiplier)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+     poly_capacity, poly_power, poly_mass, poly_multiplier, inverter_capable)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(manufacturer_id, model, refrigerant_code) DO UPDATE SET
       type=excluded.type, price_eur=excluded.price_eur,
       poly_capacity=excluded.poly_capacity, poly_power=excluded.poly_power,
-      poly_multiplier=excluded.poly_multiplier, active=1`);
+      poly_multiplier=excluded.poly_multiplier,
+      inverter_capable=excluded.inverter_capable, active=1`);
   for (const c of GENERATED_COMPRESSORS) {
     const [mfr, model, type, ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price] = c;
     const m = db.prepare('SELECT id FROM manufacturers WHERE name = ?').get(mfr);
@@ -178,7 +195,7 @@ function seedGeneratedCompressors() {
     ins.run(m.id, model, type, ref, 50, 400, vh, dS, dD, imax,
       teMin, teMax, tcMin, tcMax, price,
       JSON.stringify(coeffs.polyCapacity), JSON.stringify(coeffs.polyPower),
-      null, 1);
+      null, 1, inverterCapable(model));
   }
 }
 
@@ -188,8 +205,8 @@ function seedCompressors() {
     (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
      displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
      min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
-     poly_capacity, poly_power, poly_mass, poly_multiplier)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+     poly_capacity, poly_power, poly_mass, poly_multiplier, inverter_capable)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(manufacturer_id, model, refrigerant_code) DO UPDATE SET
       type=excluded.type, displacement_m3h=excluded.displacement_m3h,
       suction_d_in=excluded.suction_d_in, discharge_d_in=excluded.discharge_d_in,
@@ -197,7 +214,8 @@ function seedCompressors() {
       max_tevap=excluded.max_tevap, min_tcond=excluded.min_tcond,
       max_tcond=excluded.max_tcond, price_eur=excluded.price_eur,
       poly_capacity=excluded.poly_capacity, poly_power=excluded.poly_power,
-      poly_mass=excluded.poly_mass, poly_multiplier=excluded.poly_multiplier, active=1`);
+      poly_mass=excluded.poly_mass, poly_multiplier=excluded.poly_multiplier,
+      inverter_capable=excluded.inverter_capable, active=1`);
   for (const c of COMPRESSORS) {
     // формат данных: [производитель, модель, тип(игнор.), хладагент, Vh, ...]
     const [mfr, model, , ref, vh, dS, dD, imax, teMin, teMax, tcMin, tcMax, price, pCap, pPow, pMas] = c;
@@ -209,7 +227,7 @@ function seedCompressors() {
     ins.run(m.id, model, type, ref, 50, 400, vh, dS, dD, imax,
       teMin, teMax, tcMin, tcMax, price,
       JSON.stringify(pCap), JSON.stringify(pPow),
-      pMas ? JSON.stringify(pMas) : null, mult);
+      pMas ? JSON.stringify(pMas) : null, mult, inverterCapable(model));
   }
 }
 

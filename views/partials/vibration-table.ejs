@@ -2,9 +2,10 @@
   // Виброгасители: индивидуальный подбор на каждый компрессор, раздельно для
   // линии всасывания и линии нагнетания. Партиал отдаёт готовый блок вместе
   // с обёрткой .table-wrap, поэтому вызывающая страница не оборачивает его.
+  // Порядок строк: нагнетание выше всасывания
   const vibrationLines = [
-    { key: 'suction', label: 'Всасывание' },
-    { key: 'discharge', label: 'Нагнетание' }
+    { key: 'discharge', label: 'Нагнетание' },
+    { key: 'suction', label: 'Всасывание' }
   ];
   const showVibrationPrices = typeof isAdmin !== 'undefined' && isAdmin;
   const BASIS_LABELS = { port: 'по патрубку КМ', speed: 'по скорости', none: 'нет данных' };
@@ -34,10 +35,10 @@
           <td><%= label %></td>
           <td><%= row.manufacturer %> <%= row.model %></td>
           <td class="num"><%= row.qty %></td>
-          <td class="num"><%= row.portSizeIn != null ? row.portSizeIn : '—' %></td>
+          <td class="num"><%= row.portSizeIn != null ? inch(row.portSizeIn) : '—' %></td>
           <td class="num"><%= row.massFlowKgh %></td>
           <td class="cell-code"><%= row.article %></td>
-          <td class="num num--strong"><%= row.sizeIn %></td>
+          <td class="num num--strong"><%= inch(row.sizeIn) %></td>
           <td class="num"><%= row.velocity != null ? row.velocity : '—' %></td>
           <td class="muted"><%= basisLabel(row.basis) %></td>
           <% if (showVibrationPrices) { %><td class="num"><%= row.price_eur %></td><% } %>
@@ -46,8 +47,8 @@
     </tbody>
   </table>
   <p class="table-foot">
-    Всего: всасывание — <b class="num"><%= vibration.totalSuctionQty %></b> шт.,
-    нагнетание — <b class="num"><%= vibration.totalDischargeQty %></b> шт.
+    Всего: нагнетание — <b class="num"><%= vibration.totalDischargeQty %></b> шт.,
+    всасывание — <b class="num"><%= vibration.totalSuctionQty %></b> шт.
     Размер виброгасителя принят по диаметру патрубка компрессора, а при отсутствии
     этих данных — по скорости хладагента в рекомендованном диапазоне для
     индивидуальной производительности компрессора.

@@ -19,6 +19,7 @@
 const { db } = require('../db/database');
 const piping = require('./piping');
 const refr = require('./refrigerants');
+const { formatInch } = require('./inch');
 
 const CATEGORY = 'vibration';
 
@@ -95,7 +96,7 @@ function aggregate(lines, lineName) {
         size_in: item.sizeIn,
         price_eur: item.price_eur,
         qty: 0,
-        name: `Виброгаситель ${lineName} ${item.article} (${item.sizeIn}")`
+        name: `Виброгаситель ${lineName} ${item.article} (${formatInch(item.sizeIn)})`
       };
       byArticle.set(item.article, entry);
     }

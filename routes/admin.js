@@ -89,17 +89,21 @@ router.post('/import', (req, res) => {
       (manufacturer_id, model, type, refrigerant_code, frequency_hz, voltage_v,
        displacement_m3h, suction_d_in, discharge_d_in, max_current_a,
        min_tevap, max_tevap, min_tcond, max_tcond, price_eur,
-       poly_capacity, poly_power, poly_mass, poly_multiplier)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       poly_capacity, poly_power, poly_mass, poly_multiplier, inverter_capable)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       ON CONFLICT(manufacturer_id, model, refrigerant_code) DO UPDATE SET
         poly_capacity=excluded.poly_capacity, poly_power=excluded.poly_power,
         poly_mass=excluded.poly_mass, poly_multiplier=excluded.poly_multiplier,
         displacement_m3h=excluded.displacement_m3h, suction_d_in=excluded.suction_d_in,
         discharge_d_in=excluded.discharge_d_in, max_current_a=excluded.max_current_a,
         min_tevap=excluded.min_tevap, max_tevap=excluded.max_tevap,
-        min_tcond=excluded.min_tcond, max_tcond=excluded.max_tcond, active=1`);
+        min_tcond=excluded.min_tcond, max_tcond=excluded.max_tcond,
+        inverter_capable=excluded.inverter_capable, active=1`);
 
     const defaultPrice = parseFloat(req.body.defaultPrice) || 1000;
+    // Каталог инверторной серии загружается отдельным файлом: админ отмечает
+    // это галочкой, иначе модели считаются обычными (без поддержки инвертора).
+    const inverterCapable = req.body.inverterCapable === '1' || req.body.inverterCapable === 'on' ? 1 : 0;
 
     for (let i = headerRow + 1; i < rows.length; i++) {
       const r = rows[i];
@@ -129,7 +133,8 @@ router.post('/import', (req, res) => {
         getNum(r[12]) != null ? getNum(r[12]) : -40, getNum(r[13]) != null ? getNum(r[13]) : 10,
         getNum(r[10]) != null ? getNum(r[10]) : 10, getNum(r[11]) != null ? getNum(r[11]) : 60,
         defaultPrice,
-        JSON.stringify(pCap), JSON.stringify(pPow), JSON.stringify(pMas), multiplier
+        JSON.stringify(pCap), JSON.stringify(pPow), JSON.stringify(pMas), multiplier,
+        inverterCapable
       );
       imported++;
     }
