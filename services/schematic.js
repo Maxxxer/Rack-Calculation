@@ -48,7 +48,7 @@ const CANVAS = { width: 1500, height: 1050 };
 // всасывания (снизу) к нагнетанию (сверху), поэтому нагнетательная ветка
 // идёт от компрессора к общему коллектору нагнетания, а всасывающая — от
 // коллектора всасывания к компрессору.
-const COMP = { firstX: 300, stepX: 190, limit: 4, centerY: 780, radius: 32 };
+const COMP = { firstX: 300, stepX: 190, centerY: 780, radius: 32 };
 const HEADER_Y = 470;        // общий коллектор нагнетания
 const SUCTION_Y = 910;       // коллектор всасывания
 const RISER_X = 1390;        // подъём нагнетания к конденсатору
@@ -545,7 +545,7 @@ function layoutOf(compressorXs) {
 }
 
 /** Стрелки направления потока */
-function buildArrows(compressorXs) {
+function buildArrows(compressorXs, hasOilSeparator) {
   const { lastX, regulatorXs, oilHeaderX, oilFilterX } = layoutOf(compressorXs);
   const arrows = [
     // коллектор нагнетания → подъём к конденсатору
@@ -562,12 +562,16 @@ function buildArrows(compressorXs) {
     { x: SUCTION_X + 120, y: SUCTION_Y, rot: 0 },
     // байпас зимнего комплекта: с нагнетания в ресивер
     { x: BYPASS.x, y: 395, rot: -90 },
-    // масляная линия: от масляного ресивера вниз и к регуляторам уровня
-    { x: oilHeaderX, y: 560, rot: 90 },
-    { x: oilFilterX + 45, y: OIL_FEED_Y, rot: 180 }
   ];
+  if (hasOilSeparator) {
+    arrows.push(
+      // масляная линия: от масляного ресивера вниз и к регуляторам уровня
+      { x: oilHeaderX, y: 560, rot: 90 },
+      { x: oilFilterX + 45, y: OIL_FEED_Y, rot: 180 }
+    );
+  }
 
-  regulatorXs.forEach((x, i) => {
+  if (hasOilSeparator) regulatorXs.forEach((x, i) => {
     // масло к регулятору уровня — сверху вниз
     arrows.push({ x, y: OIL_FEED_Y + 26, rot: 90 });
     // масло от регулятора в картер компрессора
@@ -595,17 +599,15 @@ function buildArrows(compressorXs) {
  * NRV на линии слива, NRD на байпасе с нагнетания в ресивер между NRV и
  * вентилем входа в ресивер.
  */
-function buildWires(compressorXs) {
+function buildWires(compressorXs, hasOilSeparator) {
   const { lastX, regulatorXs, oilHeaderX, oilValveX, oilFilterX, oilLeftX } = layoutOf(compressorXs);
 
   const wires = [
-    // общий коллектор нагнетания до маслоотделителя
-    { kind: 'discharge', d: `M ${compressorXs[0]} ${HEADER_Y} H ${oilHeaderX - 20}` },
-    // вход и выход нагнетания — на верхнем днище маслоотделителя
-    { kind: 'discharge', d: `M ${oilHeaderX - 20} ${HEADER_Y} V ${HEADER_Y + 14}` },
-    { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y + 14} V ${HEADER_Y}` },
-    // коллектор нагнетания от маслоотделителя на подъём к конденсатору
-    { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y} H ${RISER_X} V ${CONDENSER.cy + CONDENSER.h / 2}` },
+    // Без маслоотделителя нагнетание идёт напрямую к подъёму, без
+    // искусственной петли входа/выхода аппарата.
+    { kind: 'discharge', d: hasOilSeparator
+      ? `M ${compressorXs[0]} ${HEADER_Y} H ${oilHeaderX - 20}`
+      : `M ${compressorXs[0]} ${HEADER_Y} H ${RISER_X} V ${CONDENSER.cy + CONDENSER.h / 2}` },
     // конденсатор — линия слива: опуск идёт левее подъёма нагнетания, поэтому
     // линии нагнетания и слива не пересекаются
     { kind: 'liquid', d: `M ${LIQUID.condenserDropX} ${CONDENSER.cy + CONDENSER.h / 2} V ${LIQUID_Y} H ${TXV_X}` },
@@ -617,11 +619,20 @@ function buildWires(compressorXs) {
     { kind: 'diff', d: `M ${RISER_X} ${BYPASS.y} H ${BYPASS.x} V ${LIQUID_Y}` },
     // всасывание: патрубок от испарителя, вертикаль и коллектор всасывания
     { kind: 'suction', d: `M ${SUCTION_X} ${SUCTION_TOP_Y} V ${SUCTION_Y} H ${lastX}` },
-    // масляная линия: маслоотделитель → масляный ресивер → вентиль на выходе
-    { kind: 'oil', d: `M ${oilHeaderX} ${HEADER_Y} V ${OIL_FEED_Y}` },
-    // линия подачи масла: масляный фильтр → вентили Rotalock → регуляторы
-    { kind: 'oil', d: `M ${oilHeaderX} ${OIL_FEED_Y} H ${oilLeftX}` }
   ];
+  if (hasOilSeparator) {
+    wires.push(
+      // Вход и выход нагнетания проходят через верхние штуцеры
+      // маслоотделителя, после чего отдельным участком идут к конденсатору.
+      { kind: 'discharge', d: `M ${oilHeaderX - 20} ${HEADER_Y} V ${HEADER_Y + 14}` },
+      { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y + 14} V ${HEADER_Y}` },
+      { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y} H ${RISER_X} V ${CONDENSER.cy + CONDENSER.h / 2}` },
+      // масляная линия: маслоотделитель → масляный ресивер → вентиль на выходе
+      { kind: 'oil', d: `M ${oilHeaderX} ${HEADER_Y} V ${OIL_FEED_Y}` },
+      // линия подачи масла: масляный фильтр → вентили Rotalock → регуляторы
+      { kind: 'oil', d: `M ${oilHeaderX} ${OIL_FEED_Y} H ${oilLeftX}` }
+    );
+  }
 
   compressorXs.forEach((x, i) => {
     const regulatorX = regulatorXs[i];
@@ -630,9 +641,11 @@ function buildWires(compressorXs) {
     // всасывание: из коллектора всасывания в компрессор (снизу)
     wires.push({ kind: 'suction', d: `M ${x} ${SUCTION_Y} V ${COMP.centerY + COMP.radius}` });
     // масло: от линии подачи к регулятору уровня
-    wires.push({ kind: 'oil', d: `M ${regulatorX} ${OIL_FEED_Y} V ${COMP.centerY}` });
-    // масло: от регулятора уровня в картер компрессора
-    wires.push({ kind: 'oil', d: `M ${regulatorX} ${COMP.centerY} H ${x + 30}` });
+    if (hasOilSeparator) {
+      wires.push({ kind: 'oil', d: `M ${regulatorX} ${OIL_FEED_Y} V ${COMP.centerY}` });
+      // масло: от регулятора уровня в картер компрессора
+      wires.push({ kind: 'oil', d: `M ${regulatorX} ${COMP.centerY} H ${x + 30}` });
+    }
   });
 
   return wires;
@@ -662,12 +675,22 @@ function buildSchematic(result) {
   const compressorRows = byCode.get('compressor') || [];
   const machines = [];
   (result.selection.items || []).forEach(sel => {
-    const row = compressorRows.find(b => b.article === sel.model) || null;
-    for (let i = 0; i < Math.max(1, sel.qty | 0); i++) machines.push({ sel, row });
+    // The BOM can contain a normalized/display article while selection keeps
+    // the catalog model. Keep a synthetic row as a fallback so a compressor
+    // is never silently dropped from the hydraulic scheme.
+    const row = compressorRows.find(b => b.article === sel.model) || {
+      option_code: 'compressor',
+      article: sel.model,
+      name: `Компрессор ${sel.manufacturer || ''} ${sel.model}`.trim(),
+      qty: sel.qty || 1
+    };
+    const quantity = Math.max(1, Number(sel.qty) || Number(row.qty) || 1);
+    for (let i = 0; i < quantity; i++) machines.push({ sel, row });
   });
-  const shown = machines.slice(0, COMP.limit);
+  const shown = machines;
   const compressorXs = shown.map((_, i) => COMP.firstX + i * COMP.stepX);
   const { regulatorXs, oilHeaderX, oilValveX, oilFilterX } = layoutOf(compressorXs);
+  const hasOilSeparator = !!rowOf('oil_separator');
 
   // Виброгасители — одна опция, но позиции линий самостоятельные: линию
   // определяем по плану подбора (result.vibration). Старые коды принимаются
@@ -807,30 +830,30 @@ function buildSchematic(result) {
   // верхнем днище), под ним масляный ресивер, далее вентиль на выходе
   // ресивера, масляный фильтр и вентили Rotalock перед каждым регулятором
   // уровня масла.
-  placeOption('oil_separator', {
+  if (hasOilSeparator) placeOption('oil_separator', {
     symbol: 'oil_separator', x: oilHeaderX, y: HEADER_Y + 60
   });
-  placeOption('oil_receiver', {
+  if (hasOilSeparator) placeOption('oil_receiver', {
     symbol: 'oil_receiver', x: oilHeaderX, y: OIL_FEED_Y, rot: 0
   });
-  placeOption('oil_cooler', {
+  if (hasOilSeparator) placeOption('oil_cooler', {
     symbol: 'oil_cooler', x: oilHeaderX, y: OIL_FEED_Y - 40
   });
-  placeOption('orv_thermostat', {
+  if (hasOilSeparator) placeOption('orv_thermostat', {
     symbol: 'three_way', x: oilHeaderX + 150, y: OIL_FEED_Y - 40
   });
   // Вентиль на выходе масляного ресивера — на линии подачи, обозначение слева
-  placeOption('oil_receiver_valve', {
+  if (hasOilSeparator) placeOption('oil_receiver_valve', {
     symbol: 'rotalock_valve', x: oilValveX, y: OIL_FEED_Y, rot: 180,
     tagDx: -24, tagDy: 0, tagAnchor: 'end'
   });
-  placeOption('oil_filter', {
+  if (hasOilSeparator) placeOption('oil_filter', {
     symbol: 'oil_filter', x: oilFilterX, y: OIL_FEED_Y, rot: 180
   });
 
   const regulatorValveRow = rowOf('oil_regulator_valve');
   const regulatorRow = rowOf('level_regulator') || rowOf('erum');
-  regulatorXs.forEach(x => {
+  if (hasOilSeparator) regulatorXs.forEach(x => {
     // вентиль Rotalock перед регулятором уровня масла
     placeRow(regulatorValveRow, {
       symbol: 'rotalock_valve', x, y: REGULATOR_VALVE_Y, rot: -90,
@@ -914,8 +937,8 @@ function buildSchematic(result) {
   return {
     width: CANVAS.width,
     height: CANVAS.height,
-    wires: buildWires(compressorXs),
-    arrows: buildArrows(compressorXs),
+    wires: buildWires(compressorXs, hasOilSeparator),
+    arrows: buildArrows(compressorXs, hasOilSeparator),
     blocks,
     legend,
     otherItems,

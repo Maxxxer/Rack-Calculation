@@ -13,6 +13,7 @@ const { execFileSync } = require('child_process');
 const PYTHON = path.join(__dirname, '..', 'vendor', 'coolprop', 'python.exe');
 const COOLPROP_SCRIPT = path.join(__dirname, '..', 'scripts', 'coolprop_query.py');
 const COOLPROP_PATH = path.join(__dirname, '..', 'vendor', 'coolprop', 'extracted');
+const propertyCache = new Map();
 const FLUIDS = {
   R404a: { fluid: 'R404a', name: 'R404a', safety: 'A1', glide: 0.7, gwp: 3922 },
   R507a: { fluid: 'R507A', name: 'R507a', safety: 'A1', glide: 0.0, gwp: 3985 },
@@ -29,6 +30,9 @@ function getFluid(code) {
 
 function call(output, name1, value1, name2, value2, code) {
   const fluid = getFluid(code);
+  const key = [fluid.fluid, output, name1, value1, name2, value2].join('|');
+  const cached = propertyCache.get(key);
+  if (cached !== undefined) return cached;
   const result = execFileSync(PYTHON, [COOLPROP_SCRIPT, JSON.stringify({
     output, name1, value1, name2, value2, fluid: fluid.fluid
   })], {
@@ -40,6 +44,7 @@ function call(output, name1, value1, name2, value2, code) {
   if (!Number.isFinite(value)) {
     throw new Error(`CoolProp не рассчитал ${output} для ${code}: ${result}`);
   }
+  propertyCache.set(key, value);
   return value;
 }
 
