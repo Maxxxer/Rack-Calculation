@@ -545,7 +545,7 @@ function layoutOf(compressorXs) {
 }
 
 /** Стрелки направления потока */
-function buildArrows(compressorXs, hasOilSeparator) {
+function buildArrows(compressorXs, hasOilSeparator, hasWinterBypass) {
   const { lastX, regulatorXs, oilHeaderX, oilFilterX } = layoutOf(compressorXs);
   const arrows = [
     // коллектор нагнетания → подъём к конденсатору
@@ -560,9 +560,11 @@ function buildArrows(compressorXs, hasOilSeparator) {
     { x: SUCTION_X, y: SUCTION_TOP_Y + 34, rot: 90 },
     { x: SUCTION_X, y: 520, rot: 90 },
     { x: SUCTION_X + 120, y: SUCTION_Y, rot: 0 },
-    // байпас зимнего комплекта: с нагнетания в ресивер
-    { x: BYPASS.x, y: 395, rot: -90 },
   ];
+  if (hasWinterBypass) {
+    // байпас зимнего комплекта: с нагнетания в ресивер
+    arrows.push({ x: BYPASS.x, y: 395, rot: -90 });
+  }
   if (hasOilSeparator) {
     arrows.push(
       // масляная линия: от масляного ресивера вниз и к регуляторам уровня
@@ -599,7 +601,7 @@ function buildArrows(compressorXs, hasOilSeparator) {
  * NRV на линии слива, NRD на байпасе с нагнетания в ресивер между NRV и
  * вентилем входа в ресивер.
  */
-function buildWires(compressorXs, hasOilSeparator) {
+function buildWires(compressorXs, hasOilSeparator, hasWinterBypass) {
   const { lastX, regulatorXs, oilHeaderX, oilValveX, oilFilterX, oilLeftX } = layoutOf(compressorXs);
 
   const wires = [
@@ -615,11 +617,13 @@ function buildWires(compressorXs, hasOilSeparator) {
     { kind: 'liquid', d: `M ${TXV_X + 24} ${LIQUID_Y} H ${TXV_X}` },
     // штуцер предохранительного клапана на линейном ресивере
     { kind: 'branch', d: `M ${LIQUID.safetyX} ${LIQUID_Y} V ${LIQUID.safetyY}` },
-    // байпас зимнего комплекта: с нагнетания в ресивер между NRV и вентилем входа
-    { kind: 'diff', d: `M ${RISER_X} ${BYPASS.y} H ${BYPASS.x} V ${LIQUID_Y}` },
     // всасывание: патрубок от испарителя, вертикаль и коллектор всасывания
     { kind: 'suction', d: `M ${SUCTION_X} ${SUCTION_TOP_Y} V ${SUCTION_Y} H ${lastX}` },
   ];
+  if (hasWinterBypass) {
+    // байпас зимнего комплекта: с нагнетания в ресивер между NRV и вентилем входа
+    wires.push({ kind: 'diff', d: `M ${RISER_X} ${BYPASS.y} H ${BYPASS.x} V ${LIQUID_Y}` });
+  }
   if (hasOilSeparator) {
     wires.push(
       // Вход и выход нагнетания проходят через верхние штуцеры
@@ -691,6 +695,9 @@ function buildSchematic(result) {
   const compressorXs = shown.map((_, i) => COMP.firstX + i * COMP.stepX);
   const { regulatorXs, oilHeaderX, oilValveX, oilFilterX } = layoutOf(compressorXs);
   const hasOilSeparator = !!rowOf('oil_separator');
+  const hasWinterBypass = !!rowOf('winter_kvr') &&
+    !!rowOf('winter_nrv_drain') &&
+    !!rowOf('winter_diff');
 
   // Виброгасители — одна опция, но позиции линий самостоятельные: линию
   // определяем по плану подбора (result.vibration). Старые коды принимаются
@@ -910,10 +917,12 @@ function buildSchematic(result) {
   });
 
   // ---------- Байпас зимнего комплекта (NRD) ----------
-  placeOption(BYPASS.code, {
-    symbol: 'diff_valve', x: BYPASS.x, y: (BYPASS.y + LIQUID_Y) / 2, rot: -90,
-    tagDx: 22, tagDy: 4, tagAnchor: 'start'
-  });
+  if (hasWinterBypass) {
+    placeOption(BYPASS.code, {
+      symbol: 'diff_valve', x: BYPASS.x, y: (BYPASS.y + LIQUID_Y) / 2, rot: -90,
+      tagDx: 22, tagDy: 4, tagAnchor: 'start'
+    });
+  }
 
   // ---------- Внешние элементы контура: конденсатор ----------
   placeExternal({
@@ -937,8 +946,8 @@ function buildSchematic(result) {
   return {
     width: CANVAS.width,
     height: CANVAS.height,
-    wires: buildWires(compressorXs, hasOilSeparator),
-    arrows: buildArrows(compressorXs, hasOilSeparator),
+    wires: buildWires(compressorXs, hasOilSeparator, hasWinterBypass),
+    arrows: buildArrows(compressorXs, hasOilSeparator, hasWinterBypass),
     blocks,
     legend,
     otherItems,
