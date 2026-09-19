@@ -125,7 +125,19 @@ const OPTIONS = [
     qty_per_compressor: 1, auto_rule: '', allowed_types: 'recip,scroll',
     mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 27 },
 
-  // --- Зимний комплект ----------------------------------------------------
+    // --- Линия сброса давления масляного ресивера (дифференциальный клапан) ---
+    // Поддерживает гарантированный перепад 3-3.5 бар между масляным ресивером и всасыванием
+    // для снабжения маслом компрессоров. Состоит из дифференциального клапана, опционально
+    // с запорным клапаном Rotalock FP-RV-038 SAE. Рисуется пунктиром как вспомогательная линия.
+    { code: 'oil_pressure_relief_valve', name: 'Дифференциальный клапан сброса давления масляного ресивера (3-3.5 бар)',
+      section: 'discharge', component_category: null, sizing: 'none', price_eur: 0,
+      auto_rule: '', allowed_types: 'recip,scroll',
+      mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 28 },
+    { code: 'oil_pressure_relief_rotalock', name: 'Запорный клапан Rotalock FP-RV-038 SAE на линии сброса давления',
+      section: 'discharge', component_category: null, sizing: 'none', price_eur: 0,
+      auto_rule: '', allowed_types: 'recip,scroll', sort_order: 29 },
+
+    // --- Зимний комплект ----------------------------------------------------
   // KVR — клапан регулирования давления на нагнетании после маслоотделителя.
   { code: 'winter_kvr', name: 'Клапан регулирования давления KVR на нагнетании',
     section: 'winter', component_category: 'kvr_valve',
@@ -233,6 +245,8 @@ const OPTION_ARTICLES = {
   safety_valve: 'FP-SV-038',
   service_valve: '6210/2',
   winter_diff: 'NRD 12s',
+  oil_pressure_relief_valve: 'FP-DPR-038',
+  oil_pressure_relief_rotalock: 'FP-RV-038 SAE',
   pressure_switch_hp: 'KP15 авт.',
   pressure_switch_lp: 'KP15 авт.',
   pressure_transmitter: 'PB11 / PB21'

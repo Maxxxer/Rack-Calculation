@@ -350,7 +350,7 @@ const SYMBOLS = {
     tagDx: 0, tagDy: 6,
     shapes: [
       rect(-35, -48, 70, 96, 16),
-      path('M -25 -48 H 25'),
+        // Убран патрубок вверху в центре (была горизонтальная линия M -25 -48 H 25)
       line(-20, -48, -20, -58), line(20, -48, 20, -58),
       path('M -16 28 q 8 -10 16 0 q 8 10 16 0')
     ]
@@ -583,6 +583,11 @@ function buildArrows(compressorXs, hasOilSeparator, hasWinterBypass) {
     // всасывающая ветка: поток вверх, в компрессор
     arrows.push({ x: compressorXs[i], y: SUCTION_Y - 16, rot: -90 });
   });
+  
+    // Стрелка на линии сброса давления масляного ресивера (от ресивера к всасыванию)
+    if (hasOilSeparator) {
+      arrows.push({ x: oilHeaderX, y: OIL_FEED_Y + 100, rot: 90 });
+    }
 
   return arrows;
 }
@@ -634,9 +639,12 @@ function buildWires(compressorXs, hasOilSeparator, hasWinterBypass) {
       // масляная линия: маслоотделитель → масляный ресивер → вентиль на выходе
       { kind: 'oil', d: `M ${oilHeaderX} ${HEADER_Y} V ${OIL_FEED_Y}` },
       // линия подачи масла: масляный фильтр → вентили Rotalock → регуляторы
-      { kind: 'oil', d: `M ${oilHeaderX} ${OIL_FEED_Y} H ${oilLeftX}` }
-    );
-  }
+        { kind: 'oil', d: `M ${oilHeaderX} ${OIL_FEED_Y} H ${oilLeftX}` },
+        // линия сброса давления масляного ресивера: от ресивера вниз к всасыванию
+        // с дифференциальным клапаном (3-3,5 бар), пунктирная вспомогательная линия
+        { kind: 'oil', dash: true, d: `M ${oilHeaderX} ${OIL_FEED_Y} V ${OIL_FEED_Y + 230} H ${SUCTION_X} V ${SUCTION_Y}` }
+      );
+    }
 
   compressorXs.forEach((x, i) => {
     const regulatorX = regulatorXs[i];
@@ -857,6 +865,18 @@ function buildSchematic(result) {
   if (hasOilSeparator) placeOption('oil_filter', {
     symbol: 'oil_filter', x: oilFilterX, y: OIL_FEED_Y, rot: 180
   });
+  
+    // Дифференциальный клапан на линии сброса давления масляного ресивера
+    // Поддерживает перепад 3-3,5 бар между масляным ресивером и всасыванием
+    if (hasOilSeparator) placeOption('oil_pressure_relief_valve', {
+      symbol: 'diff_valve', x: oilHeaderX, y: OIL_FEED_Y + 115, rot: -90,
+      tagDx: 22, tagDy: 4, tagAnchor: 'start'
+    });
+    // Запорный клапан Rotalock FP-RV-038 SAE на линии сброса (опционально)
+    if (hasOilSeparator) placeOption('oil_pressure_relief_rotalock', {
+      symbol: 'rotalock_valve', x: oilHeaderX, y: OIL_FEED_Y + 165, rot: -90,
+      tagDx: 22, tagDy: 4, tagAnchor: 'start'
+    });
 
   const regulatorValveRow = rowOf('oil_regulator_valve');
   const regulatorRow = rowOf('level_regulator') || rowOf('erum');
