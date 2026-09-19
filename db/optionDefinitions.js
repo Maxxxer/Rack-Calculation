@@ -57,33 +57,7 @@ const OPTIONS = [
     description: 'Одна опция: виброгасители подбираются отдельно для линии всасывания и линии нагнетания — по одному на каждый компрессор; размер по патрубку КМ, при отсутствии данных — по скорости хладагента и производительности',
     auto_rule: '', sort_order: 10 },
 
-  { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compressors',
-    component_category: null, sizing: 'none', price_eur: 180,
-    auto_rule: '{"min_compressors":2}', sort_order: 12 },
-  // Инвертор: поршневые и винтовые — всегда, спиральные — только модели с
-  // поддержкой инвертора (inverter_only).
-  { code: 'inverter', name: 'Инвертор', section: 'compressors', component_category: null,
-    sizing: 'none', price_eur: 650, auto_rule: '',
-    allowed_types: 'recip,screw,scroll', inverter_only: 1, sort_order: 13 },
-  // Отжим клапанов — механика поршневого компрессора, для остальных типов
-  // не применяется.
-  { code: 'unloader', name: 'Отжим клапанов', section: 'compressors', component_category: null,
-    sizing: 'none', price_eur: 210, auto_rule: '',
-    allowed_types: 'recip', sort_order: 14 },
-  { code: 'check_valves', name: 'Обратные клапана после КМ', section: 'compressors',
-    component_category: 'check_valve', sizing: 'pipe_per_compressor', pipe_line: 'discharge',
-    auto_rule: '{"min_compressors":2}', sort_order: 15 },
-
-  // --- Масляная линия -----------------------------------------------------
-  // При двух и более спиральных или поршневых компрессорах маслоотделитель,
-  // масляный ресивер и регуляторы уровня масла входят в агрегат обязательно
-  // (mandatory_rule): они убираются из окна «Опции» и переходят в базовый
-  // состав. У винтовых масляный ресивер и регулятор уровня масла не
-  // применяются — масло циркулирует в контуре компрессора и охлаждается
-  // маслоохладителем через трёхходовой термостат ORV.
-  { code: 'oil_separator', name: 'Маслоотделитель', section: 'discharge', component_category: 'oil_separator',
-    sizing: 'capacity', auto_rule: '{"max_tevap":-25}',
-    mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 20 },
+  { code: 'capacity_ctrl', name: 'Регулировка производительности КМ', section: 'compre   m,  m mkmmmmmmmmmmmmm    mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 20 },
   { code: 'oil_receiver', name: 'Масляный ресивер', section: 'discharge', component_category: 'oil_receiver',
     sizing: 'capacity', auto_rule: '{"max_tevap":-25}', allowed_types: 'recip,scroll',
     mandatory_rule: '{"compressor_types":["scroll","recip"],"min_compressors":2}', sort_order: 21 },
@@ -126,6 +100,10 @@ const OPTIONS = [
     sizing: 'none', auto_rule: '{"always":true}', mandatory: 1, sort_order: 43 },
   { code: 'sight_glass', name: 'Смотровой глазок', section: 'liquid', component_category: 'sight_glass',
     sizing: 'pipe', pipe_line: 'liquid', auto_rule: '{"always":true}', mandatory: 1, sort_order: 44 },
+  // Предохранительный клапан жидкостного ресивера (в гидравлической схеме — SV).
+  // Позиции нет в каталоге компонентов: цену заполните в справочнике.
+  { code: 'safety_valve', name: 'Предохранительный клапан', section: 'liquid', component_category: null,
+    sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 46 },
   { code: 'liquid_ball_valve', name: 'Шаровый кран на выходе агрегата', section: 'liquid',
     component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',
     auto_rule: '{"always":true}', mandatory: 1, sort_order: 45 },
@@ -144,6 +122,26 @@ const OPTIONS = [
     auto_rule: '', sort_order: 61 },
   { code: 'level_switch', name: 'Реле уровня хладагента', section: 'extra', component_category: null,
     sizing: 'none', price_eur: 145, auto_rule: '', sort_order: 62 },
+  // --- Приборы гидравлической схемы ---------------------------------------
+  // Как в производственной схеме агрегата: реле давления, манометры, датчик
+  // давления и термостат нагнетания выводятся на схему отдельными знаками с
+  // обозначениями PSH, PSL, GP, PB, T. Позиций нет в каталоге компонентов:
+  // цены заполните в справочнике.
+  { code: 'pressure_switch_hp', name: 'Реле давления высокого давления', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 64 },
+  { code: 'pressure_switch_lp', name: 'Реле давления низкого давления', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 65 },
+  { code: 'pressure_transmitter', name: 'Датчик давления', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 66 },
+  { code: 'gauge_hp', name: 'Манометр высокого давления', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 67 },
+  { code: 'gauge_lp', name: 'Манометр низкого давления', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 68 },
+  { code: 'discharge_thermostat', name: 'Термостат нагнетания', section: 'extra',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 69 },
+  // Масляный фильтр на линии возврата масла от маслоотделителя (в схеме — OF).
+  { code: 'oil_filter', name: 'Масляный фильтр', section: 'discharge',
+    component_category: null, sizing: 'none', price_eur: 0, auto_rule: '', sort_order: 25 },
   { code: 'solenoid', name: 'Соленоидный вентиль на линии жидкости', section: 'extra',
     component_category: 'ball_valve', sizing: 'pipe', pipe_line: 'liquid',
     auto_rule: '', sort_order: 63 }

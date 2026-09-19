@@ -4,6 +4,11 @@
    подключается и приложением (style.css), и печатной формой КП
    (print-doc.css). Цвета берутся из темы приложения, а при её отсутствии —
    из печатной палитры: у каждого свойства есть резервное значение.
+
+   Разметка повторяет производственную гидравлическую схему: трубы контура
+   разных видов (нагнетание, жидкость, всасывание, масло, перепуск), знаки
+   оборудования с обозначениями позиций и таблица-легенда «обозначение —
+   наименование — марка — количество».
    ========================================================================== */
 
 .schematic {
@@ -29,7 +34,7 @@
   height: auto;
 }
 
-/* -- Трубы --------------------------------------------------------------- */
+/* -- Трубы контура -------------------------------------------------------- */
 .schematic__pipe {
   fill: none;
   stroke: var(--sch-pipe);
@@ -37,11 +42,33 @@
   stroke-linecap: round;
 }
 
+/* Нагнетание — основная линия контура */
+.schematic__pipe--discharge {
+  stroke-width: 2.6;
+}
+
+/* Жидкостная линия */
+.schematic__pipe--liquid {
+  stroke-width: 2.2;
+}
+
+/* Всасывание — линия большего сечения */
+.schematic__pipe--suction {
+  stroke-width: 3;
+}
+
+/* Масляная линия возврата */
 .schematic__pipe--oil {
   stroke-dasharray: 7 4;
   stroke-width: 1.8;
 }
 
+/* Врезка предохранительного клапана */
+.schematic__pipe--branch {
+  stroke-width: 1.6;
+}
+
+/* Перепуск дифференциального клапана */
 .schematic__pipe--diff {
   stroke-dasharray: 4 4;
   stroke-width: 1.6;
@@ -52,7 +79,7 @@
   fill: var(--sch-pipe);
 }
 
-/* -- Символы компонентов -------------------------------------------------- */
+/* -- Знаки оборудования --------------------------------------------------- */
 .schematic__unit > * {
   fill: none;
   stroke: var(--sch-sym);
@@ -61,91 +88,83 @@
   stroke-linejoin: round;
 }
 
-.schematic__unit--external > * {
-  stroke: var(--sch-muted);
-  stroke-dasharray: none;
-}
-
-.schematic__unit--external rect:first-child {
-  stroke-dasharray: 7 5;
-  fill: var(--sch-surface);
-}
-
 .schematic__mask {
   fill: var(--sch-surface);
   stroke: none;
 }
 
-/* -- Номера позиций и подписи -------------------------------------------- */
-.schematic__badge circle {
+/* -- Обозначения позиций -------------------------------------------------- */
+.schematic__tag {
   fill: var(--sch-accent);
-  stroke: none;
-}
-
-.schematic__badge text {
-  fill: #ffffff;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 600;
-  text-anchor: middle;
+  dominant-baseline: middle;
 }
 
-.schematic__label,
-.schematic__line-label {
-  fill: var(--sch-muted);
-  font-family: var(--font-sans, 'Inter', sans-serif);
-  font-size: 12px;
-  text-anchor: middle;
+.schematic__tag--inside {
+  fill: var(--sch-ink);
+  font-size: 14px;
 }
 
+/* -- Подписи линий -------------------------------------------------------- */
 .schematic__line-label {
-  font-size: 12.5px;
-  font-weight: 600;
   fill: var(--sch-sym);
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 17px;
+  font-weight: 600;
+  text-anchor: middle;
 }
 
-/* -- Легенда ------------------------------------------------------------- */
+/* -- Легенда: таблица позиций -------------------------------------------- */
 .schematic__legend {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  width: 100%;
+  border-collapse: collapse;
   border-top: 1px solid var(--sch-soft);
-}
-
-.schematic__legend-row {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto auto;
-  align-items: baseline;
-  gap: 4px 12px;
-  padding: 7px 14px;
-  border-bottom: 1px solid var(--sch-soft);
   font-size: 13px;
 }
 
-.schematic__legend-row:last-child {
+.schematic__legend th {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--sch-soft);
+  background: var(--surface-2, #f5f8fb);
+  color: var(--sch-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.schematic__legend th:last-child {
+  text-align: right;
+}
+
+.schematic__legend td {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--sch-soft);
+  vertical-align: baseline;
+}
+
+.schematic__legend tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.schematic__legend-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--sch-accent);
-  color: #ffffff;
+.schematic__legend-tag {
+  width: 1%;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
+  color: var(--sch-accent);
+  white-space: nowrap;
 }
 
 .schematic__legend-name {
-  min-width: 0;
   color: var(--sch-ink);
 }
 
 .schematic__legend-article {
+  width: 1%;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 12px;
   color: var(--sch-muted);
@@ -153,10 +172,12 @@
 }
 
 .schematic__legend-qty {
+  width: 1%;
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 12px;
   font-weight: 600;
   color: var(--sch-ink);
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -181,17 +202,24 @@
     break-inside: avoid;
   }
 
-  .schematic__legend-row {
+  .schematic__legend {
     font-size: 10pt;
+  }
+
+  .schematic__legend th,
+  .schematic__legend td {
+    padding: 3px 8px;
   }
 }
 
 @media (max-width: 640px) {
-  .schematic__legend-row {
-    grid-template-columns: 24px minmax(0, 1fr) auto;
+  .schematic__legend th,
+  .schematic__legend td {
+    padding: 6px 8px;
   }
 
   .schematic__legend-article {
-    grid-column: 2;
+    white-space: normal;
+    word-break: break-word;
   }
 }

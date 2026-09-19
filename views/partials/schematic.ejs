@@ -1,8 +1,12 @@
 <%
   // Гидравлическая схема агрегата. Модель собирается в services/schematic.js из
   // спецификации расчёта, поэтому на схеме ровно те компоненты, которые вошли в
-  // агрегат: обязательные, автоматические и отмеченные пользователем. Здесь
-  // только разметка SVG и таблица-легенда с номерами позиций.
+  // агрегат: обязательные, автоматические и отмеченные пользователем.
+  //
+  // Разметка повторяет производственную гидравлическую схему: контур из
+  // ортогональных линий, обозначение позиции у каждого знака (OS1, LR1, DF1,
+  // SG1, V1, CV1, PSH1, GP1 …) и таблица-легенда «обозначение — наименование —
+  // марка — количество».
   const s = typeof schematic !== 'undefined' ? schematic : null;
 %>
 <% if (s) { %>
@@ -13,7 +17,7 @@
 
       <g class="schematic__pipes">
         <% s.wires.forEach(w => { %>
-          <path class="schematic__pipe<%= w.kind === 'oil' ? ' schematic__pipe--oil' : (w.kind === 'diff' ? ' schematic__pipe--diff' : '') %>" d="<%= w.d %>" />
+          <path class="schematic__pipe schematic__pipe--<%= w.kind %>" d="<%= w.d %>" />
         <% }) %>
       </g>
 
@@ -24,34 +28,32 @@
         <% }) %>
       </g>
 
-      <% s.blocks.forEach(b => { %>
-        <g class="schematic__unit<%= b.external ? ' schematic__unit--external' : '' %>"
-           transform="translate(<%= b.x %> <%= b.y %>) rotate(<%= b.rot %>)">
-          <% if (!b.maskless) { %>
-            <rect class="schematic__mask" x="<%= -b.mask.w / 2 %>" y="<%= -b.mask.h / 2 %>"
-                  width="<%= b.mask.w %>" height="<%= b.mask.h %>" />
-          <% } %>
-          <% b.shapes.forEach(sh => { %>
-            <% if (sh.t === 'path') { %>
-              <path d="<%= sh.d %>"<% if (sh.dash) { %> stroke-dasharray="4 3"<% } %> />
-            <% } else if (sh.t === 'rect') { %>
-              <rect x="<%= sh.x %>" y="<%= sh.y %>" width="<%= sh.w %>" height="<%= sh.h %>"<% if (sh.r) { %> rx="<%= sh.r %>"<% } %> />
-            <% } else if (sh.t === 'circle') { %>
-              <circle cx="<%= sh.cx %>" cy="<%= sh.cy %>" r="<%= sh.r %>" />
-            <% } else { %>
-              <line x1="<%= sh.x1 %>" y1="<%= sh.y1 %>" x2="<%= sh.x2 %>" y2="<%= sh.y2 %>"<% if (sh.dash) { %> stroke-dasharray="4 3"<% } %> />
+      <g class="schematic__units">
+        <% s.blocks.forEach(b => { %>
+          <g class="schematic__unit" transform="translate(<%= b.x %> <%= b.y %>) rotate(<%= b.rot %>)">
+            <% if (!b.maskless) { %>
+              <rect class="schematic__mask" x="<%= b.mask.x %>" y="<%= b.mask.y %>"
+                    width="<%= b.mask.w %>" height="<%= b.mask.h %>" />
             <% } %>
-          <% }) %>
-        </g>
-
-        <% if (b.num) { %>
-          <g class="schematic__badge" transform="translate(<%= b.x + b.numDx %> <%= b.y + b.numDy %>)">
-            <circle r="12" /><text y="4"><%= b.num %></text>
+            <% b.shapes.forEach(sh => { %>
+              <% if (sh.t === 'path') { %>
+                <path d="<%= sh.d %>"<% if (sh.dash) { %> stroke-dasharray="4 3"<% } %> />
+              <% } else if (sh.t === 'rect') { %>
+                <rect x="<%= sh.x %>" y="<%= sh.y %>" width="<%= sh.w %>" height="<%= sh.h %>"<% if (sh.r) { %> rx="<%= sh.r %>"<% } %> />
+              <% } else if (sh.t === 'circle') { %>
+                <circle cx="<%= sh.cx %>" cy="<%= sh.cy %>" r="<%= sh.r %>" />
+              <% } else { %>
+                <line x1="<%= sh.x1 %>" y1="<%= sh.y1 %>" x2="<%= sh.x2 %>" y2="<%= sh.y2 %>"<% if (sh.dash) { %> stroke-dasharray="4 3"<% } %> />
+              <% } %>
+            <% }) %>
           </g>
-        <% } else if (b.label) { %>
-          <text class="schematic__label" x="<%= b.labelX %>" y="<%= b.labelY %>"><%= b.label %></text>
-        <% } %>
-      <% }) %>
+          <% if (b.tag) { %>
+            <text class="schematic__tag<%= b.tagInside ? ' schematic__tag--inside' : '' %>"
+                  x="<%= b.x + b.tagDx %>" y="<%= b.y + b.tagDy %>"
+                  text-anchor="<%= b.tagAnchor %>"><%= b.tag %></text>
+          <% } %>
+        <% }) %>
+      </g>
 
       <g class="schematic__line-labels">
         <% s.lineLabels.forEach(l => { %>
@@ -61,16 +63,26 @@
     </svg>
   </div>
 
-  <ol class="schematic__legend">
-    <% s.legend.forEach(row => { %>
-      <li class="schematic__legend-row">
-        <span class="schematic__legend-num"><%= row.num %></span>
-        <span class="schematic__legend-name"><%= row.name %></span>
-        <span class="schematic__legend-article"><%= row.article %></span>
-        <span class="schematic__legend-qty"><%= row.qty %> шт</span>
-      </li>
-    <% }) %>
-  </ol>
+  <table class="schematic__legend">
+    <thead>
+      <tr>
+        <th>Обозначение</th>
+        <th>Наименование</th>
+        <th>Марка</th>
+        <th>Кол-во</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% s.legend.forEach(row => { %>
+        <tr>
+          <td class="schematic__legend-tag"><%= row.tag %></td>
+          <td class="schematic__legend-name"><%= row.name %></td>
+          <td class="schematic__legend-article"><%= row.article %></td>
+          <td class="schematic__legend-qty"><%= row.qty %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
 
   <% if (s.otherItems.length || s.notes.length) { %>
     <div class="schematic__foot">
