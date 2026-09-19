@@ -5,6 +5,7 @@
 формирование коммерческого предложения (EUR, без НДС) и производственной спецификации.
 
 Стек: **Node.js + Express + SQLite (встроенный `node:sqlite`) + EJS + Telegram-бот**.
+Термодинамические свойства и точки цикла рассчитываются через **CoolProp**.
 
 ## Возможности
 
@@ -72,7 +73,12 @@ routes/                    — auth, calc, quotes, admin
 bot/telegram.js            — бот подтверждения регистраций
 views/                     — EJS-шаблоны
 scripts/makeTemplate.js    — генератор шаблона Excel
+scripts/coolprop_query.py  — адаптер Node.js → CoolProp
 ```
+
+Для CoolProp в репозитории поставляется изолированный Python 3.10 runtime и
+пакет CoolProp в `vendor/coolprop`. Поэтому отдельная установка Python для
+запуска приложения не требуется.
 
 ## Бизнес-логика цены
 

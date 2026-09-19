@@ -60,12 +60,13 @@ function portSizeIn(compressor, kind) {
  * Массовый расход одного компрессора, кг/ч.
  * Если полином массового расхода отсутствует — оценка по холодопроизводительности.
  */
-function compressorMassFlowKgh(compressor, { refrigerant, tEvap, tCond, dTsh = 10 }) {
+function compressorMassFlowKgh(compressor, { refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0 }) {
   const given = Number(compressor.mass_flow_kgh);
   if (Number.isFinite(given) && given > 0) return given;
 
   const qKw = Number(compressor.q_kw);
-  const q0 = refr.hVaporSuperheated(refrigerant, tEvap, tEvap + dTsh) - refr.hLiquid(refrigerant, tCond);
+  const q0 = refr.hVaporSuperheated(refrigerant, tEvap, tEvap + dTsh) -
+             refr.hLiquid(refrigerant, tCond - dTsc);
   if (!(qKw > 0) || !(q0 > MIN_LATENT_HEAT_KJKG)) return 0;
   return qKw * 3600 / q0;
 }

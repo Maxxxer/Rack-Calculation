@@ -29,7 +29,7 @@ function parsePoly(json) {
  * Характеристики компрессора в точке (S, D).
  * Возвращает { q_kw, power_kw, current_a, volume_m3h, mass_flow_kgh } или null вне диапазона.
  */
-function compressorPerformance(comp, tEvap, tCond) {
+function compressorPerformance(comp, tEvap, tCond, dTsh = 10, dTsc = 0) {
   if (tEvap < comp.min_tevap || tEvap > comp.max_tevap) return null;
   if (tCond < comp.min_tcond || tCond > comp.max_tcond) return null;
 
@@ -55,12 +55,13 @@ function compressorPerformance(comp, tEvap, tCond) {
   const pMas = parsePoly(comp.poly_mass);
   if (pMas) out.mass_flow_kgh = +evalPoly(pMas, tEvap, tCond).toFixed(2);
 
-  // Если массовый расход не задан полиномом — оценка через q и энтальпии
+  // Если массовый расход не задан полиномом — оценка через реальный цикл.
+  // Важно: используем фактические перегрев и переохлаждение, а не литералы 10 K / 0 K.
   if (!out.mass_flow_kgh) {
     const refr = require('./refrigerants');
-    const q0 = refr.hVaporSuperheated(comp.refrigerant_code, tEvap, tEvap + 10) -
-               refr.hLiquid(comp.refrigerant_code, tCond);
-    if (q0 > 20) out.mass_flow_kgh = +(q_kw * 3600 / q0).toFixed(2);
+    const q0 = refr.hVaporSuperheated(comp.refrigerant_code, tEvap, tEvap + dTsh) -
+               refr.hLiquid(comp.refrigerant_code, tCond - dTsc);
+    if (q0 > 0) out.mass_flow_kgh = +(q_kw * 3600 / q0).toFixed(2);
   }
   return out;
 }
@@ -109,7 +110,7 @@ function normalizeTolerancePct(value) {
  */
 function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerId,
                       maxQty = 3, topN = 5, tolerancePct = DEFAULT_TOLERANCE_PCT,
-                      inverterOnly = false }) {
+                      inverterOnly = false, dTsh = 10, dTsc = 0 }) {
   const tol = normalizeTolerancePct(tolerancePct) / 100;
   const minKw = requiredKw * (1 - tol);
   const maxKw = requiredKw * (1 + tol);
@@ -119,7 +120,7 @@ function autoSelect({ refrigerant, tEvap, tCond, requiredKw, type, manufacturerI
   const inTolerance = [];
   const outside = [];
   for (const c of candidates) {
-    const perf = compressorPerformance(c, tEvap, tCond);
+    const perf = compressorPerformance(c, tEvap, tCond, dTsh, dTsc);
     if (!perf || !perf.q_kw || perf.q_kw <= 0) continue;
     for (let qty = 1; qty <= maxQty; qty++) {
       const total = perf.q_kw * qty;
@@ -162,7 +163,7 @@ function compressorSupportsInverter(compressor) {
  * Пересчет характеристик системы для выбранного набора компрессоров.
  * items: [{ compressorId, qty }]
  */
-function evaluateSelection({ refrigerant, tEvap, tCond, items }) {
+function evaluateSelection({ refrigerant, tEvap, tCond, items, dTsh = 10, dTsc = 0 }) {
   const detail = [];
   let totalQ = 0, totalPower = 0, totalMass = 0, totalCurrent = 0, totalPrice = 0, totalVolume = 0;
   for (const it of items) {
@@ -170,7 +171,7 @@ function evaluateSelection({ refrigerant, tEvap, tCond, items }) {
       SELECT c.*, m.name AS manufacturer FROM compressors c
       JOIN manufacturers m ON m.id = c.manufacturer_id WHERE c.id = ?`).get(it.compressorId);
     if (!c) throw new Error('Компрессор не найден');
-    const perf = compressorPerformance(c, tEvap, tCond);
+    const perf = compressorPerformance(c, tEvap, tCond, dTsh, dTsc);
     if (!perf) throw new Error(`Модель ${c.model}: режим вне диапазона полинома`);
     const qty = Math.max(1, it.qty | 0);
     totalQ += (perf.q_kw || 0) * qty;

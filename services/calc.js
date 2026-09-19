@@ -58,7 +58,9 @@ function resolveVariants(input, tolerancePct) {
     manufacturerId: (input.auto && input.auto.manufacturerId) || 'any',
     maxQty: (input.auto && input.auto.maxQty) || 3,
     tolerancePct,
-    topN: VARIANT_COUNT
+    topN: VARIANT_COUNT,
+    dTsh: input.dTsh ?? 10,
+    dTsc: input.dTsc ?? 0
   };
   const inverterRequired = (input.selectedOptions || []).includes('inverter');
   if (!inverterRequired) return selection.autoSelect(params);
@@ -122,7 +124,7 @@ function calculateCore(input, chosenItem, discountPercent = 0) {
 
   // 1. Компрессоры
   const sel = selection.evaluateSelection({
-    refrigerant, tEvap, tCond, items: [chosenItem]
+    refrigerant, tEvap, tCond, dTsh, dTsc, items: [chosenItem]
   });
 
   // Отклонение подобранной мощности от требуемой. Для ручного выбора режима

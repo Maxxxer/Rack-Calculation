@@ -37,7 +37,7 @@ function pipeArea(size) {
 function lineDensity(kind, { refrigerant, tEvap, tCond, dTsh = 10, dTsc = 0 }) {
   if (kind === 'suction') return refr.rhoSuction(refrigerant, tEvap, dTsh);
   if (kind === 'discharge') {
-    const tDisch = refr.dischargeTemp(refrigerant, tEvap, tCond);
+    const tDisch = refr.dischargeTemp(refrigerant, tEvap, tCond, 0.75, dTsh);
     return refr.rhoDischarge(refrigerant, tCond, tDisch);
   }
   return refr.rhoLiquid(refrigerant, tCond - dTsc);
