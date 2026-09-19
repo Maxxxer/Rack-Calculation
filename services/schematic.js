@@ -2,10 +2,28 @@
  * Гидравлическая схема агрегата.
  *
  * Схема повторяет принцип построения производственной гидравлической схемы
- * (см. ЗП24.2102.000.00.00.Г): контур рисуется ортогональными линиями, каждая
- * позиция получает обозначение (OS1, LR1, DF1, SG1, V1, CV1, PSH1, GP1 …),
- * приборы выводятся отдельными знаками на линиях, а размеры линий подписаны
+ * (см. ЗП24.2158.000.00.00.Г): контур рисуется ортогональными линиями, каждая
+ * позиция получает обозначение (OS1, OR1, OML1, DF1, SG1, V1, CV1, PSH1, GP1 …),
+ * приборы и сосуды выводятся отдельными знаками, а размеры линий подписаны
  * в дюймовой «трубной» записи.
+ *
+ * Границы схемы — границы агрегата: компрессоры, общий коллектор нагнетания
+ * с маслоотделителем, масляная линия, конденсатор, жидкостная линия с линейным
+ * ресивером и всасывающая линия. Испаритель и терморегулирующий вентиль в
+ * состав агрегата не входят, поэтому жидкостная и всасывающая линии просто
+ * заканчиваются патрубками в сторону испарителя.
+ *
+ * Особенности обвязки, повторённые по приложенной гидравлике:
+ *  - маслоотделитель висит под коллектором нагнетания, вход и выход
+ *    нагнетания подведены к его верхнему днищу;
+ *  - линейный ресивер имеет три штуцера: вход, выход и штуцер
+ *    предохранительного клапана;
+ *  - зимняя обвязка: KVR на нагнетании после маслоотделителя, NRV на линии
+ *    слива из конденсатора в ресивер перед вентилем входа в ресивер и NRD на
+ *    байпасной линии от нагнетания в ресивер между NRV и вентилем входа;
+ *  - регуляторы уровня масла установлены по одному на компрессор справа от
+ *    машины, масло к ним идёт от масляного ресивера через масляный фильтр и
+ *    вентиль Rotalock перед каждым регулятором.
  *
  * Состав схемы не рисуется вручную: он собирается из спецификации расчёта,
  * поэтому на контуре оказываются ровно те позиции, которые входят в агрегат
@@ -18,27 +36,58 @@
  * Система координат — миллиметры схемы: ось X вправо, ось Y вниз. Символы
  * описаны в локальных координатах вокруг точки врезки в трубу (0,0) при
  * горизонтальной трубе; поле rot поворачивает символ вместе с трубой
- * (-90 — поток вверх, 90 — вниз, 180 — влево).
+ * (-90 — поток вверх, 90 — вниз, 180 — влево), поле scale уменьшает знак.
  */
 'use strict';
 
 // ============================ Геометрия схемы =============================
 
-const CANVAS = { width: 1420, height: 960 };
+const CANVAS = { width: 1500, height: 1050 };
 
-// Компрессорный отсек
-const COMP = { firstX: 320, stepX: 170, limit: 4, centerY: 800, radius: 34 };
-const HEADER_Y = 640;        // коллектор нагнетания
-const SUCTION_Y = 890;       // коллектор всасывания
-const RISER_X = 1200;        // подъём нагнетания к конденсатору
-const LIQUID_Y = 430;        // жидкостная линия
-const SUCTION_X = 120;       // вертикаль всасывания (от испарителя)
-const OIL_RETURN_Y = 730;    // линия возврата масла к компрессорам
-const CONDENSER = { cx: 1120, cy: 190, w: 340, h: 130 };
-const EVAPORATOR = { cx: 200, cy: 175, w: 250, h: 120 };
-const TXV = { x: 400 };                    // ТРВ на жидкостной линии
-const BYPASS = { x: 1360, y: 320, code: 'winter_diff' };
-const SAFETY = { x: 1300, y: 404, code: 'safety_valve' };
+// Компрессорный отсек. Компрессор рисуется выходом вверх: поток идёт от
+// всасывания (снизу) к нагнетанию (сверху), поэтому нагнетательная ветка
+// идёт от компрессора к общему коллектору нагнетания, а всасывающая — от
+// коллектора всасывания к компрессору.
+const COMP = { firstX: 300, stepX: 190, limit: 4, centerY: 780, radius: 32 };
+const HEADER_Y = 470;        // общий коллектор нагнетания
+const SUCTION_Y = 910;       // коллектор всасывания
+const RISER_X = 1390;        // подъём нагнетания к конденсатору
+const LIQUID_Y = 370;        // жидкостная линия
+const SUCTION_X = 120;       // вертикаль всасывания
+const SUCTION_TOP_Y = 260;   // верхний конец всасывающей линии
+const TXV_X = 420;           // свободный конец жидкостной линии
+const OIL_FEED_Y = 620;      // линия подачи масла к регуляторам уровня
+const REGULATOR_DX = 95;     // смещение регулятора уровня от компрессора
+const REGULATOR_VALVE_Y = 700; // вентиль Rotalock перед регулятором
+const CONDENSER = { cx: 1250, cy: 190, w: 320, h: 130 };
+
+// Жидкостная линия: конденсатор → обратный клапан на сливе (NRV) → вентиль
+// входа в ресивер → линейный ресивер (три штуцера) → запорный вентиль
+// Rotalock → фильтр-осушитель → смотровой глазок → вентили. Порядок
+// перечисления — по потоку, справа налево. Опуск от конденсатора идёт левее
+// подъёма нагнетания, поэтому линии не пересекаются.
+const LIQUID = {
+  condenserDropX: 1300,   // опуск от конденсатора к жидкостной линии
+  nrvX: 1240,             // CV: обратный клапан на сливе из конденсатора
+  inletValveX: 1150,      // V: вентиль на входе в линейный ресивер
+  receiverX: 1000,        // LR: линейный ресивер
+  safetyX: 1000,          // SV: предохранительный клапан на штуцере ресивера
+  safetyY: 280,
+  outletValveX: 860,      // V: запорный вентиль Rotalock сразу после ресивера
+  filterX: 780,           // DF: фильтр-осушитель
+  insertX: 780,           // DFi: вставка осушительная
+  sightX: 680,            // SG: смотровой глазок
+  solenoidX: 580,         // SOV: соленоидный вентиль
+  ballValveX: 500         // V: шаровый кран на выходе агрегата
+};
+
+// Байпас зимнего комплекта (NRD): с нагнетания в ресивер между обратным
+// клапаном слива и вентилем входа в ресивер.
+const BYPASS = { x: 1200, y: 420, code: 'winter_diff' };
+
+// Арматура (вентили, обратные клапаны, виброгасители, фильтры) рисуется
+// уменьшенной: знаки меньше по масштабу, чтобы контур выглядел компактно.
+const FITTING_SCALE = 0.5;
 
 // ===================== Обозначения позиций (теги) ==========================
 // Буквенный код по виду оборудования — как в гидравлической схеме агрегата.
@@ -50,11 +99,17 @@ const TAG_PREFIX = {
   oil_cooler: 'OC',
   orv_thermostat: 'ORV',
   oil_filter: 'OF',
-  erum: 'ER',
+  oil_receiver_valve: 'V',
+  oil_regulator_valve: 'V',
+  level_regulator: 'OML',
+  erum: 'OML',
   check_valves: 'CV',
-  vibration: 'VD',
+  vibration: 'VA',
+  compressor_valve: 'V',
   liquid_receiver: 'LR',
   liquid_nrv: 'CV',
+  receiver_outlet_valve: 'V',
+  receiver_inlet_valve: 'V',
   filter_drier: 'DF',
   drier_insert: 'DFi',
   sight_glass: 'SG',
@@ -64,15 +119,15 @@ const TAG_PREFIX = {
   discharge_valve: 'V',
   suction_ball_valve: 'V',
   safety_valve: 'SV',
-  liquid_separator: 'ACC',
+  liquid_separator: 'AS',
   suction_filter: 'SF',
-  winter_kvr: 'KVR',
+  winter_kvr: 'V',
   winter_cpr: 'CPR',
-  winter_nrv_drain: 'NRV',
-  winter_diff: 'DIFF',
+  winter_nrv_drain: 'CV',
+  winter_diff: 'DV',
   receiver_heater: 'E',
   level_switch: 'LS',
-  pressure_switch_hp: 'PSH',
+  pressure_switch_hp: 'PSLH',
   pressure_switch_lp: 'PSL',
   pressure_transmitter: 'PB',
   gauge_hp: 'GP',
@@ -117,16 +172,36 @@ const serpentine = (left, right, top, step, turns) => {
  * Применяется для реле давления, манометров, датчика, термостата, реле уровня.
  */
 const instrument = () => ({
-  mask: maskRect(-27, -76, 54, 80),
+  mask: maskRect(-30, -80, 60, 84),
   tagInside: true,
+  tagDx: 0, tagDy: -55,
   shapes: [line(0, 0, 0, -34), circle(0, -55, 21)]
 });
+
+/**
+ * Знак регулятора уровня масла (OML): поплавковая камера на картере
+ * компрессора. Один регулятор на компрессор, справа от машины; масло
+ * подводится сверху, в картер — слева. Обозначение вынесено под знак, чтобы
+ * не перекрывать вентиль на линии подачи масла.
+ */
+const levelRegulator = () => ({
+  mask: maskRect(-34, -36, 68, 72),
+  tagInside: false,
+  tagDx: 0, tagDy: 42,
+  shapes: [
+    rect(-18, -30, 36, 60, 10),
+    line(-18, 0, -24, 0),
+    line(18, 0, 24, 0),
+    path('M -12 -8 H 12'),
+    circle(0, 10, 5)
+  ]
+});
+
 // ============================ Библиотека знаков ============================
 // Знаки выполнены по практике холодильных гидравлических схем: сосуды —
 // цилиндры с обозначением внутри, вентили — два треугольника с ручкой,
 // обратный клапан — треугольник с седлом, фильтры — корпус с перегородками,
 // приборы — круг с линией связи с трубой.
-
 const SYMBOLS = {
   /** Компрессор (COM) */
   compressor: {
@@ -135,10 +210,11 @@ const SYMBOLS = {
     shapes: [circle(0, 0, 32), path('M -14 -16 L 16 0 L -14 16 Z'), line(32, 0, 46, 0)]
   },
 
-  /** Виброгаситель (VD) — гибкая вставка между фланцами */
+  /** Виброгаситель (VA) — гибкая вставка между фланцами */
   damper: {
+    scale: FITTING_SCALE,
     mask: maskC(84, 38),
-    tagDx: 0, tagDy: -32,
+    tagDx: 0, tagDy: -22,
     shapes: [
       line(-34, -17, -34, 17), line(34, -17, 34, 17),
       path('M -34 0 C -22 -15 -10 15 0 0 C 10 -15 22 15 34 0')
@@ -147,8 +223,9 @@ const SYMBOLS = {
 
   /** Обратный клапан (CV) — тарелка и седло */
   check_valve: {
+    scale: FITTING_SCALE,
     mask: maskC(62, 38),
-    tagDx: 0, tagDy: -32,
+    tagDx: 0, tagDy: -22,
     shapes: [
       line(-28, -16, -28, 16),
       path('M -14 -13 L 12 0 L -14 13 Z'),
@@ -158,22 +235,33 @@ const SYMBOLS = {
 
   /** Шаровый вентиль (V) — два треугольника, шар и ручка */
   ball_valve: {
+    scale: FITTING_SCALE,
     mask: maskC(66, 48),
-    tagDx: 0, tagDy: -36,
+    tagDx: 0, tagDy: -24,
     shapes: [...bowtie(15, 13), circle(0, 0, 5), line(0, -13, 0, -27), line(-10, -27, 10, -27)]
   },
 
   /** Вентиль Rotalock (V) — треугольники с маховиком */
   rotalock_valve: {
+    scale: FITTING_SCALE,
     mask: maskC(66, 56),
-    tagDx: 0, tagDy: -44,
+    tagDx: 0, tagDy: -28,
     shapes: [...bowtie(15, 13), line(0, -13, 0, -26), path('M -11 -26 L 11 -26 L 0 -40 Z')]
+  },
+
+  /** Мембранный вентиль (V) — вентиль с мембраной */
+  membrane_valve: {
+    scale: FITTING_SCALE,
+    mask: maskC(66, 52),
+    tagDx: 0, tagDy: -26,
+    shapes: [...bowtie(15, 13), line(0, -13, 0, -24), path('M -13 -24 H 13 A 13 13 0 0 1 -13 -24 Z')]
   },
 
   /** Соленоидный вентиль (SOV) — вентиль с катушкой */
   solenoid: {
+    scale: FITTING_SCALE,
     mask: maskC(66, 66),
-    tagDx: 0, tagDy: -50,
+    tagDx: 0, tagDy: -34,
     shapes: [
       ...bowtie(15, 13), line(0, -13, 0, -22),
       rect(-12, -36, 24, 14, 2), line(-17, -43, 17, -43)
@@ -182,8 +270,11 @@ const SYMBOLS = {
 
   /** Предохранительный клапан (SV) — тарелка, пружина, выброс */
   safety_valve: {
-    mask: maskC(60, 84),
-    tagDx: 30, tagDy: 4, tagAnchor: 'start',
+    scale: FITTING_SCALE,
+    // вырез не заходит ниже точки врезки, поэтому штуцер ресивера остаётся
+    // видимым и клапан читается подключённым к сосуду
+    mask: maskRect(-22, -80, 44, 80),
+    tagDx: 20, tagDy: 4, tagAnchor: 'start',
     shapes: [
       line(0, 0, 0, -22),
       path('M -13 -22 L 13 -22 L 0 -36 Z'),
@@ -196,18 +287,20 @@ const SYMBOLS = {
 
   /** Смотровой глазок (SG) — круг с крестом */
   sight_glass: {
+    scale: FITTING_SCALE,
     mask: maskC(58, 58),
-    tagDx: 0, tagDy: -38,
+    tagDx: 0, tagDy: -24,
     shapes: [
       circle(0, 0, 16), line(-16, 0, 16, 0), line(0, -16, 0, 16),
       line(-26, 0, -16, 0), line(16, 0, 26, 0)
     ]
   },
 
-  /** Фильтр-осушитель (DF) — корпус с перегородками */
+  /** Фильтр со сменным сердечником (DF, SF) — корпус с перегородками */
   filter: {
+    scale: FITTING_SCALE,
     mask: maskC(96, 54),
-    tagDx: 0, tagDy: -38,
+    tagDx: 0, tagDy: -22,
     shapes: [
       line(-36, -19, -36, 19), line(36, -19, 36, 19),
       rect(-32, -19, 64, 38),
@@ -217,6 +310,7 @@ const SYMBOLS = {
 
   /** Вставка осушительная (DFi) — рисуется внутри фильтра, не закрывая его */
   insert: {
+    scale: FITTING_SCALE,
     maskless: true,
     mask: maskC(44, 30),
     shapes: [
@@ -227,8 +321,9 @@ const SYMBOLS = {
 
   /** Масляный фильтр (OF) */
   oil_filter: {
+    scale: FITTING_SCALE,
     mask: maskC(72, 46),
-    tagDx: 0, tagDy: -32,
+    tagDx: 0, tagDy: -22,
     shapes: [
       line(-27, -17, -27, 17), line(27, -17, 27, 17),
       rect(-23, -17, 46, 34),
@@ -236,7 +331,7 @@ const SYMBOLS = {
     ]
   },
 
-  /** Линейный ресивер (LR) — горизонтальный цилиндр с уровнем */
+  /** Линейный ресивер (LR) — горизонтальный цилиндр с уровнем и тремя штуцерами */
   receiver: {
     mask: maskC(194, 94),
     tagInside: true,
@@ -248,19 +343,26 @@ const SYMBOLS = {
     ]
   },
 
-  /** Маслоотделитель (OS) — вертикальный цилиндр */
+  /** Маслоотделитель (OS) — вертикальный цилиндр, вход и выход сверху */
   oil_separator: {
-    mask: maskC(80, 104),
+    mask: maskC(84, 104),
     tagInside: true,
     tagDx: 0, tagDy: 6,
-    shapes: [rect(-35, -48, 70, 96, 16), path('M -16 28 q 8 -10 16 0 q 8 10 16 0'), line(0, -48, 0, -60)]
+    shapes: [
+      rect(-35, -48, 70, 96, 16),
+      path('M -25 -48 H 25'),
+      line(-20, -48, -20, -58), line(20, -48, 20, -58),
+      path('M -16 28 q 8 -10 16 0 q 8 10 16 0')
+    ]
   },
 
-  /** Масляный ресивер (OR) — горизонтальный цилиндр */
+  /** Масляный ресивер (OR) — вертикальный цилиндр с уровнем */
   oil_receiver: {
-    mask: maskC(112, 64),
-    tagDx: 0, tagDy: 26,
-    shapes: [rect(-51, -27, 102, 54, 14), line(-35, 8, 35, 8)]
+    scale: 0.7,
+    mask: maskC(76, 96),
+    tagInside: true,
+    tagDx: 0, tagDy: 4,
+    shapes: [rect(-32, -44, 64, 88, 16), line(-20, 22, 20, 22)]
   },
 
   /** Маслоохладитель (OC) — пластинчатый теплообменник */
@@ -281,20 +383,22 @@ const SYMBOLS = {
     ]
   },
 
-  /** Регулятор давления (KVR, CPR) */
+  /** Клапан регулирования давления KVR (на нагнетании после маслоотделителя) */
   kvr: {
+    scale: FITTING_SCALE,
     mask: maskC(66, 72),
-    tagDx: 0, tagDy: -54,
+    tagDx: 0, tagDy: -28,
     shapes: [
       ...bowtie(15, 13), line(0, -13, 0, -24),
       rect(-13, -38, 26, 12, 2), path('M -8 -44 L 8 -44'), path('M -8 -48 L 8 -48')
     ]
   },
 
-  /** Обратный дифференциальный клапан (DIFF) */
+  /** Обратный клапан байпаса NRD (с нагнетания в ресивер) */
   diff_valve: {
+    scale: FITTING_SCALE,
     mask: maskC(64, 62),
-    tagDx: 0, tagDy: -48,
+    tagDx: 0, tagDy: -32,
     shapes: [...bowtie(14, 12), line(0, -12, 0, -22), path('M -10 -22 Q 0 -42 10 -22', true)]
   },
 
@@ -312,26 +416,8 @@ const SYMBOLS = {
   /** Прибор: реле давления, манометр, датчик, термостат, реле уровня */
   instrument: instrument(),
 
-  /** ТРВ (EX) — вентиль с термоголовкой */
-  txv: {
-    mask: maskC(70, 92),
-    tagDx: 0, tagDy: 32,
-    shapes: [
-      ...bowtie(15, 13), line(0, -13, 0, -28),
-      rect(-17, -44, 34, 16, 3), path('M -9 -44 L 0 -58 L 9 -44 Z')
-    ]
-  },
-
-  /** Испаритель (EV) — внешний теплообменник */
-  evaporator: {
-    mask: maskC(EVAPORATOR.w + 20, EVAPORATOR.h + 20),
-    tagInside: true,
-    tagDx: 0, tagDy: 8,
-    shapes: [
-      rect(-EVAPORATOR.w / 2, -EVAPORATOR.h / 2, EVAPORATOR.w, EVAPORATOR.h, 8),
-      path(serpentine(-96, 96, -32, 16, 3))
-    ]
-  },
+  /** Регулятор уровня масла (OML) — по одному на компрессор */
+  level_regulator: levelRegulator(),
 
   /** Конденсатор (K) — внешний теплообменник с вентиляторами */
   condenser: {
@@ -346,132 +432,207 @@ const SYMBOLS = {
     ]
   }
 };
+
 // ===================== Позиции на контуре (по потоку) ======================
 // Порядок перечисления задаёт нумерацию обозначений: схема обходится от
-// компрессоров по нагнетанию, через конденсатор и жидкостную линию, к
-// испарителю и обратно по всасыванию.
+// компрессоров по нагнетанию, по масляной линии, по зимней обвязке, через
+// конденсатор и жидкостную линию, к всасывающей линии.
 
-// Коллектор нагнетания: маслоотделитель и масляная линия
-const HEADER_SLOTS = [
-  { code: 'oil_separator', symbol: 'oil_separator', x: 700 },
-  { code: 'oil_receiver', symbol: 'oil_receiver', x: 860 },
-  { code: 'oil_cooler', symbol: 'oil_cooler', x: 860 },
-  { code: 'orv_thermostat', symbol: 'three_way', x: 960 }
-];
-
-// Линия возврата масла (от маслоотделителя к компрессорам)
-const OIL_SLOTS = [
-  { code: 'oil_filter', symbol: 'oil_filter', x: 560, y: OIL_RETURN_Y, tagDx: 0, tagDy: -32 },
-  { code: 'erum', symbol: 'instrument', x: 430, y: OIL_RETURN_Y, rot: 0 }
-];
-
-// Подъём нагнетания к конденсатору (поток вверх)
+// Подъём нагнетания: KVR на нагнетании после маслоотделителя, выше — вентиль
+// на выходе из агрегата (поток вверх).
 const RISER_SLOTS = [
-  { code: 'winter_kvr', symbol: 'kvr', y: 540, rot: -90, tagDx: 36, tagDy: 4, tagAnchor: 'start' },
-  { code: 'discharge_valve', symbol: 'rotalock_valve', y: 300, rot: -90, tagDx: 36, tagDy: 4, tagAnchor: 'start' }
+  { code: 'winter_kvr', symbol: 'kvr', y: 400, rot: -90, tagDx: 26, tagDy: 4, tagAnchor: 'start' },
+  { code: 'discharge_valve', symbol: 'rotalock_valve', y: 300, rot: -90, tagDx: 26, tagDy: 4, tagAnchor: 'start' }
 ];
 
-// Жидкостная линия (поток справа налево: ресивер, фильтр, глазок, вентили)
+// Жидкостная линия (поток справа налево): NRV на сливе из конденсатора,
+// вентиль входа в ресивер, линейный ресивер, фильтр-осушитель, глазок, вентили.
 const LIQUID_SLOTS = [
-  { code: 'winter_nrv_drain', symbol: 'check_valve', x: 1226, rot: 180 },
-  { code: 'liquid_receiver', symbol: 'receiver', x: 1090, rot: 0 },
-  { code: 'service_valve', symbol: 'rotalock_valve', x: 950, rot: 180 },
-  { code: 'liquid_nrv', symbol: 'check_valve', x: 860, rot: 180 },
-  { code: 'filter_drier', symbol: 'filter', x: 770, rot: 180 },
-  { code: 'drier_insert', symbol: 'insert', x: 770, rot: 180, maskless: true, tagDx: -44, tagDy: 30 },
-  { code: 'sight_glass', symbol: 'sight_glass', x: 680, rot: 0 },
-  { code: 'solenoid', symbol: 'solenoid', x: 590, rot: 180 },
-  { code: 'liquid_ball_valve', symbol: 'ball_valve', x: 500, rot: 180 }
+  { code: 'winter_nrv_drain', symbol: 'check_valve', x: LIQUID.nrvX + 60, rot: 180 },
+  { code: 'liquid_nrv', symbol: 'check_valve', x: LIQUID.nrvX, rot: 180 },
+  { code: 'service_valve', symbol: 'membrane_valve', x: LIQUID.inletValveX, rot: 180 },
+  { code: 'liquid_receiver', symbol: 'receiver', x: LIQUID.receiverX, rot: 0 },
+  // сразу после ресивера — запорный вентиль Rotalock
+  { code: 'receiver_outlet_valve', symbol: 'rotalock_valve', x: LIQUID.outletValveX, rot: 180 },
+  { code: 'filter_drier', symbol: 'filter', x: LIQUID.filterX, rot: 180 },
+  { code: 'drier_insert', symbol: 'insert', x: LIQUID.insertX, rot: 180, maskless: true, tagDx: -34, tagDy: 22 },
+  { code: 'sight_glass', symbol: 'sight_glass', x: LIQUID.sightX, rot: 0 },
+  { code: 'solenoid', symbol: 'solenoid', x: LIQUID.solenoidX, rot: 180 },
+  { code: 'liquid_ball_valve', symbol: 'ball_valve', x: LIQUID.ballValveX, rot: 180 }
 ];
 
 // Всасывающая линия (поток вниз: отделитель жидкости, фильтр, вентиль)
 const SUCTION_SLOTS = [
-  { code: 'liquid_separator', symbol: 'oil_separator', y: 300, rot: 90, tagDx: 0, tagDy: -66 },
-  { code: 'suction_filter', symbol: 'filter', y: 430, rot: 90, tagDx: 60, tagDy: 8, tagAnchor: 'start' },
-  { code: 'suction_ball_valve', symbol: 'ball_valve', y: 560, rot: 90, tagDx: 34, tagDy: 8, tagAnchor: 'start' },
-  { code: 'winter_cpr', symbol: 'kvr', y: 800, rot: 90, tagDx: 34, tagDy: 8, tagAnchor: 'start' }
+  { code: 'liquid_separator', symbol: 'oil_separator', y: 380, rot: 90, tagDx: 0, tagDy: -66 },
+  { code: 'suction_filter', symbol: 'filter', y: 500, rot: 90, tagDx: 42, tagDy: 8, tagAnchor: 'start' },
+  { code: 'suction_ball_valve', symbol: 'ball_valve', y: 600, rot: 90, tagDx: 26, tagDy: 8, tagAnchor: 'start' },
+  { code: 'winter_cpr', symbol: 'kvr', y: 800, rot: 90, tagDx: 26, tagDy: 8, tagAnchor: 'start' }
 ];
 
-// Приборы на всасывании (низкое давление) — слева направо от вертикали
+// Приборы на всасывании (низкое давление) — справа от вертикали
 const SUCTION_INSTRUMENTS = [
-  { code: 'gauge_lp', x: SUCTION_X, y: 640, rot: 90 },
-  { code: 'pressure_switch_lp', x: SUCTION_X, y: 740, rot: 90 },
-  { code: 'pressure_transmitter', x: SUCTION_X, y: 830, rot: 90 }
+  { code: 'gauge_lp', x: SUCTION_X, y: 650, rot: 90 },
+  { code: 'pressure_switch_lp', x: SUCTION_X, y: 750, rot: 90 },
+  { code: 'pressure_transmitter', x: SUCTION_X, y: 840, rot: 90 }
 ];
 
 // Приборы на нагнетании (высокое давление) — над коллектором
 const HEADER_INSTRUMENTS = [
-  { code: 'discharge_thermostat', x: 820, y: HEADER_Y, rot: 0 },
-  { code: 'gauge_hp', x: 900, y: HEADER_Y, rot: 0 },
-  { code: 'pressure_switch_hp', x: 980, y: HEADER_Y, rot: 0 }
+  { code: 'discharge_thermostat', x: 700, y: HEADER_Y, rot: 0 },
+  { code: 'gauge_hp', x: 790, y: HEADER_Y, rot: 0 },
+  { code: 'pressure_switch_hp', x: 880, y: HEADER_Y, rot: 0 }
 ];
 
 // Навесное оборудование жидкостного ресивера (ТЭН и реле уровня)
 const RECEIVER_ATTACH = [
-  { code: 'receiver_heater', symbol: 'heater', x: 1030, y: 468, rot: 180, tagDx: 36, tagDy: 4, tagAnchor: 'start' },
-  { code: 'level_switch', symbol: 'instrument', x: 1180, y: 468, rot: 180 }
+  { code: 'receiver_heater', symbol: 'heater', x: 930, y: LIQUID_Y + 38, rot: 180, tagDx: 36, tagDy: 4, tagAnchor: 'start' },
+  { code: 'level_switch', symbol: 'instrument', x: 1070, y: LIQUID_Y + 38, rot: 180, tagDx: 0, tagDy: 55 }
 ];
 
-/** Подписи линий контура: размер подставляется в шаблоне через inch() */
+// Подписи линий: название и размер подставляются в шаблоне. Испаритель и ТРВ
+// в состав агрегата не входят, поэтому линии подписаны только размером.
 const LINE_LABELS = [
-  { kind: 'discharge', x: 900, y: HEADER_Y + 26, caption: 'Нагнетание' },
-  { kind: 'liquid', x: 1150, y: LIQUID_Y - 60, caption: 'Жидкость' },
-  { kind: 'suction', x: SUCTION_X + 16, y: 500, caption: 'Всасывание', rot: -90 }
+  // подписи вынесены на свободные участки линий, чтобы не перекрывать знаки
+  { kind: 'discharge', x: 480, y: HEADER_Y - 20, caption: 'Нагнетание' },
+  { kind: 'liquid', x: 560, y: LIQUID_Y + 28, caption: '' },
+  { kind: 'suction', x: SUCTION_X - 28, y: 720, caption: '', rot: -90 }
 ];
 
 // ============================ Трубы контура ===============================
 
+/**
+ * Раскладка позиций на вертикальной ветке компрессора.
+ * Позиции перечислены в порядке движения хладагента (от компрессора к
+ * магистрали), поэтому раскладка идёт от магистрали вниз — с конца списка.
+ * @returns {number[]} координаты центров знаков, в порядке перечисления
+ */
+function stubLayout(fromY, toY, items) {
+  if (!items.length) return [];
+  const total = items.reduce((sum, item) => sum + item.len, 0);
+  const gap = Math.max(6, (Math.abs(toY - fromY) - total) / (items.length + 1));
+  const places = new Array(items.length);
+  let cursor = fromY;
+  for (let i = items.length - 1; i >= 0; i--) {
+    cursor += gap + items[i].len;
+    places[i] = cursor - items[i].len / 2;
+  }
+  return places;
+}
+
+/**
+ * Производные координаты схемы: ось маслоотделителя и масляного ресивера,
+ * место масляного фильтра и вентиля на выходе масляного ресивера, точки
+ * врезки регуляторов уровня масла (по одному на компрессор справа от машины).
+ */
+function layoutOf(compressorXs) {
+  const firstX = compressorXs[0];
+  const lastX = compressorXs[compressorXs.length - 1];
+  const regulatorXs = compressorXs.map(x => x + REGULATOR_DX);
+  // Правая часть отведена под маслоотделитель с масляным ресивером; вентиль и
+  // фильтр стоят на линии подачи правее всех врезок регуляторов уровня.
+  const oilHeaderX = Math.max(1100, regulatorXs[regulatorXs.length - 1] + 135);
+  const oilValveX = oilHeaderX - 50;
+  const oilFilterX = oilHeaderX - 110;
+  return {
+    firstX,
+    lastX,
+    regulatorXs,
+    oilHeaderX,
+    oilValveX,
+    oilFilterX,
+    oilLeftX: regulatorXs[0]
+  };
+}
+
 /** Стрелки направления потока */
 function buildArrows(compressorXs) {
-  const lastX = compressorXs[compressorXs.length - 1];
+  const { lastX, regulatorXs, oilHeaderX, oilFilterX } = layoutOf(compressorXs);
   const arrows = [
-    { x: lastX + 50, y: HEADER_Y, rot: 0 },
-    { x: RISER_X, y: 420, rot: -90 },
-    { x: 1330, y: LIQUID_Y, rot: 180 },
-    { x: 620, y: LIQUID_Y, rot: 180 },
-    { x: SUCTION_X, y: 500, rot: 90 },
-    { x: 420, y: SUCTION_Y, rot: 0 },
-    { x: BYPASS.x, y: 360, rot: -90 },
-    { x: 320, y: OIL_RETURN_Y, rot: 180 }
+    // коллектор нагнетания → подъём к конденсатору
+    { x: lastX + 40, y: HEADER_Y, rot: 0 },
+    { x: RISER_X, y: 330, rot: -90 },
+    // жидкостная линия: опуск от конденсатора и движение влево к патрубку
+    { x: LIQUID.condenserDropX, y: 300, rot: 90 },
+    { x: LIQUID.outletValveX - 45, y: LIQUID_Y, rot: 180 },
+    { x: LIQUID.sightX - 50, y: LIQUID_Y, rot: 180 },
+    { x: TXV_X + 30, y: LIQUID_Y, rot: 180 },
+    // всасывание: от патрубка испарителя к компрессорам
+    { x: SUCTION_X, y: SUCTION_TOP_Y + 34, rot: 90 },
+    { x: SUCTION_X, y: 520, rot: 90 },
+    { x: SUCTION_X + 120, y: SUCTION_Y, rot: 0 },
+    // байпас зимнего комплекта: с нагнетания в ресивер
+    { x: BYPASS.x, y: 395, rot: -90 },
+    // масляная линия: от масляного ресивера вниз и к регуляторам уровня
+    { x: oilHeaderX, y: 560, rot: 90 },
+    { x: oilFilterX + 45, y: OIL_FEED_Y, rot: 180 }
   ];
-  compressorXs.forEach(x => {
-    arrows.push({ x, y: 700, rot: -90 });
-    arrows.push({ x, y: 862, rot: -90 });
-    arrows.push({ x: x - 26, y: 760, rot: 90 });
+
+  regulatorXs.forEach((x, i) => {
+    // масло к регулятору уровня — сверху вниз
+    arrows.push({ x, y: OIL_FEED_Y + 26, rot: 90 });
+    // масло от регулятора в картер компрессора
+    arrows.push({ x: x - 50, y: COMP.centerY, rot: 180 });
+    // нагнетательная ветка: поток вверх, к общему коллектору нагнетания
+    arrows.push({ x: compressorXs[i], y: HEADER_Y + 16, rot: -90 });
+    // всасывающая ветка: поток вверх, в компрессор
+    arrows.push({ x: compressorXs[i], y: SUCTION_Y - 16, rot: -90 });
   });
+
   return arrows;
 }
 
 /**
  * Трубы контура.
- * Холодильный контур: компрессоры → коллектор нагнетания → конденсатор →
- * жидкостная линия (ресивер, фильтр, вентили) → ТРВ → испаритель →
- * всасывающая линия → компрессоры.
+ * Холодильный контур агрегата: компрессоры → общий коллектор нагнетания →
+ * маслоотделитель (вход и выход сверху сосуда) → подъём нагнетания с KVR →
+ * конденсатор → линия слива с обратным клапаном NRV и вентилем входа →
+ * линейный ресивер (вход, выход и штуцер предохранительного клапана) →
+ * фильтр-осушитель, глазок, вентили → патрубок в сторону испарителя;
+ * всасывание — от патрубка испарителя через отделитель жидкости, фильтр и
+ * вентиль к компрессорам. Масляная линия: маслоотделитель → масляный ресивер
+ * → вентиль на выходе → масляный фильтр → вентили Rotalock → регуляторы
+ * уровня масла на каждом компрессоре. Зимний комплект: KVR на нагнетании,
+ * NRV на линии слива, NRD на байпасе с нагнетания в ресивер между NRV и
+ * вентилем входа в ресивер.
  */
 function buildWires(compressorXs) {
-  const lastX = compressorXs[compressorXs.length - 1];
-  const firstX = compressorXs[0];
+  const { lastX, regulatorXs, oilHeaderX, oilValveX, oilFilterX, oilLeftX } = layoutOf(compressorXs);
+
   const wires = [
-    // контур нагнетания: коллектор и подъём к конденсатору
-    { kind: 'discharge', d: `M ${lastX} ${HEADER_Y} H ${RISER_X} V ${CONDENSER.cy + CONDENSER.h / 2}` },
-    // конденсатор — жидкостная линия: выход справа и вниз
-    { kind: 'liquid', d: `M ${CONDENSER.cx + CONDENSER.w / 2} ${CONDENSER.cy} H 1390 V ${LIQUID_Y} H ${TXV.x}` },
-    // ТРВ — испаритель
-    { kind: 'liquid', d: `M ${TXV.x} ${LIQUID_Y} H ${EVAPORATOR.cx + EVAPORATOR.w / 2} V ${EVAPORATOR.cy + EVAPORATOR.h / 2}` },
-    // всасывание: испаритель → вертикаль → коллектор
-    { kind: 'suction', d: `M ${SUCTION_X} ${EVAPORATOR.cy + EVAPORATOR.h / 2} V ${SUCTION_Y} H ${lastX}` },
-    // возврат масла от маслоотделителя к компрессорам
-    { kind: 'oil', d: `M 700 ${HEADER_Y} V ${OIL_RETURN_Y} H ${firstX - 26}` },
-    // врезка предохранительного клапана в жидкостную линию
-    { kind: 'branch', d: `M ${SAFETY.x} ${LIQUID_Y} V 404` },
-    // перепуск дифференциального клапана с нагнетания в жидкостную линию
-    { kind: 'diff', d: `M ${BYPASS.x} ${LIQUID_Y} V ${BYPASS.y} H ${RISER_X}` }
+    // общий коллектор нагнетания до маслоотделителя
+    { kind: 'discharge', d: `M ${compressorXs[0]} ${HEADER_Y} H ${oilHeaderX - 20}` },
+    // вход и выход нагнетания — на верхнем днище маслоотделителя
+    { kind: 'discharge', d: `M ${oilHeaderX - 20} ${HEADER_Y} V ${HEADER_Y + 14}` },
+    { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y + 14} V ${HEADER_Y}` },
+    // коллектор нагнетания от маслоотделителя на подъём к конденсатору
+    { kind: 'discharge', d: `M ${oilHeaderX + 20} ${HEADER_Y} H ${RISER_X} V ${CONDENSER.cy + CONDENSER.h / 2}` },
+    // конденсатор — линия слива: опуск идёт левее подъёма нагнетания, поэтому
+    // линии нагнетания и слива не пересекаются
+    { kind: 'liquid', d: `M ${LIQUID.condenserDropX} ${CONDENSER.cy + CONDENSER.h / 2} V ${LIQUID_Y} H ${TXV_X}` },
+    // свободный патрубок жидкостной линии в сторону испарителя
+    { kind: 'liquid', d: `M ${TXV_X + 24} ${LIQUID_Y} H ${TXV_X}` },
+    // штуцер предохранительного клапана на линейном ресивере
+    { kind: 'branch', d: `M ${LIQUID.safetyX} ${LIQUID_Y} V ${LIQUID.safetyY}` },
+    // байпас зимнего комплекта: с нагнетания в ресивер между NRV и вентилем входа
+    { kind: 'diff', d: `M ${RISER_X} ${BYPASS.y} H ${BYPASS.x} V ${LIQUID_Y}` },
+    // всасывание: патрубок от испарителя, вертикаль и коллектор всасывания
+    { kind: 'suction', d: `M ${SUCTION_X} ${SUCTION_TOP_Y} V ${SUCTION_Y} H ${lastX}` },
+    // масляная линия: маслоотделитель → масляный ресивер → вентиль на выходе
+    { kind: 'oil', d: `M ${oilHeaderX} ${HEADER_Y} V ${OIL_FEED_Y}` },
+    // линия подачи масла: масляный фильтр → вентили Rotalock → регуляторы
+    { kind: 'oil', d: `M ${oilHeaderX} ${OIL_FEED_Y} H ${oilLeftX}` }
   ];
 
-  compressorXs.forEach(x => {
+  compressorXs.forEach((x, i) => {
+    const regulatorX = regulatorXs[i];
+    // нагнетание: из компрессора вверх в общий коллектор нагнетания
+    wires.push({ kind: 'discharge', d: `M ${x} ${COMP.centerY - COMP.radius} V ${HEADER_Y}` });
+    // всасывание: из коллектора всасывания в компрессор (снизу)
     wires.push({ kind: 'suction', d: `M ${x} ${SUCTION_Y} V ${COMP.centerY + COMP.radius}` });
-    wires.push({ kind: 'discharge', d: `M ${x} ${HEADER_Y} V ${COMP.centerY - COMP.radius}` });
-    wires.push({ kind: 'oil', d: `M ${x - 26} ${OIL_RETURN_Y} V ${COMP.centerY - 10}` });
+    // масло: от линии подачи к регулятору уровня
+    wires.push({ kind: 'oil', d: `M ${regulatorX} ${OIL_FEED_Y} V ${COMP.centerY}` });
+    // масло: от регулятора уровня в картер компрессора
+    wires.push({ kind: 'oil', d: `M ${regulatorX} ${COMP.centerY} H ${x + 30}` });
   });
 
   return wires;
@@ -506,6 +667,7 @@ function buildSchematic(result) {
   });
   const shown = machines.slice(0, COMP.limit);
   const compressorXs = shown.map((_, i) => COMP.firstX + i * COMP.stepX);
+  const { regulatorXs, oilHeaderX, oilValveX, oilFilterX } = layoutOf(compressorXs);
 
   // Виброгасители — одна опция, но позиции линий самостоятельные: линию
   // определяем по плану подбора (result.vibration). Старые коды принимаются
@@ -555,27 +717,24 @@ function buildSchematic(result) {
     return tag;
   }
 
-  /**
-   * Знак на схеме. Рисуется, только если позиция входит в спецификацию:
-   * тогда у знака есть обозначение из легенды.
-   */
+  /** Знак на схеме: рисуется, только если позиция входит в спецификацию */
   function placeRow(item, geometry) {
     if (!item) return;
     const shape = SYMBOLS[geometry.symbol];
     if (!shape) return;
-    const rot = geometry.rot || 0;
     blocks.push({
       symbol: geometry.symbol,
       x: geometry.x,
       y: geometry.y,
-      rot,
+      rot: geometry.rot || 0,
+      scale: geometry.scale != null ? geometry.scale : (shape.scale != null ? shape.scale : 1),
       mask: shape.mask,
       maskless: !!shape.maskless,
       shapes: shape.shapes,
       tag: tagFor(item),
       tagInside: !!shape.tagInside,
       tagDx: geometry.tagDx != null ? geometry.tagDx : (shape.tagDx != null ? shape.tagDx : 0),
-      tagDy: geometry.tagDy != null ? geometry.tagDy : (shape.tagDy != null ? shape.tagDy : -32),
+      tagDy: geometry.tagDy != null ? geometry.tagDy : (shape.tagDy != null ? shape.tagDy : -22),
       tagAnchor: geometry.tagAnchor || shape.tagAnchor || 'middle'
     });
   }
@@ -594,47 +753,94 @@ function buildSchematic(result) {
       x: geometry.x,
       y: geometry.y,
       rot: geometry.rot || 0,
+      scale: 1,
       mask: shape.mask,
       maskless: false,
       shapes: shape.shapes,
       tag: geometry.tag,
       tagInside: !!shape.tagInside,
       tagDx: geometry.tagDx != null ? geometry.tagDx : (shape.tagDx != null ? shape.tagDx : 0),
-      tagDy: geometry.tagDy != null ? geometry.tagDy : (shape.tagDy != null ? shape.tagDy : -32),
+      tagDy: geometry.tagDy != null ? geometry.tagDy : (shape.tagDy != null ? shape.tagDy : -22),
       tagAnchor: geometry.tagAnchor || shape.tagAnchor || 'middle'
     });
     notes.push(`${geometry.tag} — ${geometry.note}`);
   }
 
   // ---------- Компрессоры и их ветки ----------
+  // Компрессор рисуется выходом вверх: поток идёт от всасывания к нагнетанию,
+  // поэтому вершина треугольника входит в линию нагнетания. На нагнетательной
+  // ветке по потоку стоят запорный вентиль (если он есть в спецификации),
+  // виброгаситель и обратный клапан, после чего ветка входит в общий
+  // коллектор нагнетания.
+  const stubItems = [];
+  if (rowOf('compressor_valve')) stubItems.push({ row: rowOf('compressor_valve'), symbol: 'ball_valve', len: 26 });
+  if (dischargeDamperRow) stubItems.push({ row: dischargeDamperRow, symbol: 'damper', len: 32 });
+  if (rowOf('check_valves')) stubItems.push({ row: rowOf('check_valves'), symbol: 'check_valve', len: 26 });
+
   shown.forEach((machine, i) => {
     const x = compressorXs[i];
     if (machine.row) {
-      placeRow(machine.row, { symbol: 'compressor', x, y: COMP.centerY });
+      placeRow(machine.row, { symbol: 'compressor', x, y: COMP.centerY, rot: -90 });
     }
-    // всасывающая ветка: виброгаситель
-    placeRow(suctionDamperRow, { symbol: 'damper', x, y: SUCTION_Y - 92, rot: -90, tagDx: -58, tagDy: 6, tagAnchor: 'end' });
-    // нагнетательная ветка: виброгаситель и обратный клапан
-    placeRow(dischargeDamperRow, { symbol: 'damper', x, y: 700, rot: -90, tagDx: -58, tagDy: 6, tagAnchor: 'end' });
-    placeOption('check_valves', { symbol: 'check_valve', x, y: 578, rot: -90, tagDx: 40, tagDy: 4, tagAnchor: 'start' });
+    // всасывающая ветка: виброгаситель между коллектором всасывания и КМ
+    const suctionMid = (COMP.centerY + COMP.radius + SUCTION_Y) / 2;
+    placeRow(suctionDamperRow, {
+      symbol: 'damper', x, y: suctionMid, rot: -90,
+      tagDx: -26, tagDy: 6, tagAnchor: 'end'
+    });
+    // нагнетательная ветка: позиции по потоку от компрессора к магистрали
+    const stubYs = stubLayout(HEADER_Y, COMP.centerY - COMP.radius, stubItems);
+    stubItems.forEach((item, k) => {
+      placeRow(item.row, {
+        symbol: item.symbol, x, y: stubYs[k], rot: -90,
+        tagDx: -26, tagDy: 6, tagAnchor: 'end'
+      });
+    });
   });
 
   if (machines.length > shown.length) {
     notes.push(`На схеме показаны ${shown.length} компрессора из ${machines.length}.`);
   }
 
-  // ---------- Коллектор нагнетания и масляная линия ----------
-  HEADER_SLOTS.forEach(slot => {
-    placeOption(slot.code, { symbol: slot.symbol, x: slot.x, y: HEADER_Y });
+  // ---------- Масляная линия ----------
+  // Маслоотделитель висит под коллектором нагнетания (вход и выход — на его
+  // верхнем днище), под ним масляный ресивер, далее вентиль на выходе
+  // ресивера, масляный фильтр и вентили Rotalock перед каждым регулятором
+  // уровня масла.
+  placeOption('oil_separator', {
+    symbol: 'oil_separator', x: oilHeaderX, y: HEADER_Y + 60
   });
-  OIL_SLOTS.forEach(slot => {
-    placeOption(slot.code, {
-      symbol: slot.symbol, x: slot.x, y: slot.y,
-      rot: slot.rot, tagDx: slot.tagDx, tagDy: slot.tagDy
-    });
+  placeOption('oil_receiver', {
+    symbol: 'oil_receiver', x: oilHeaderX, y: OIL_FEED_Y, rot: 0
+  });
+  placeOption('oil_cooler', {
+    symbol: 'oil_cooler', x: oilHeaderX, y: OIL_FEED_Y - 40
+  });
+  placeOption('orv_thermostat', {
+    symbol: 'three_way', x: oilHeaderX + 150, y: OIL_FEED_Y - 40
+  });
+  // Вентиль на выходе масляного ресивера — на линии подачи, обозначение слева
+  placeOption('oil_receiver_valve', {
+    symbol: 'rotalock_valve', x: oilValveX, y: OIL_FEED_Y, rot: 180,
+    tagDx: -24, tagDy: 0, tagAnchor: 'end'
+  });
+  placeOption('oil_filter', {
+    symbol: 'oil_filter', x: oilFilterX, y: OIL_FEED_Y, rot: 180
   });
 
-  // ---------- Подъём нагнетания ----------
+  const regulatorValveRow = rowOf('oil_regulator_valve');
+  const regulatorRow = rowOf('level_regulator') || rowOf('erum');
+  regulatorXs.forEach(x => {
+    // вентиль Rotalock перед регулятором уровня масла
+    placeRow(regulatorValveRow, {
+      symbol: 'rotalock_valve', x, y: REGULATOR_VALVE_Y, rot: -90,
+      tagDx: 22, tagDy: 0, tagAnchor: 'start'
+    });
+    // регулятор уровня масла на картере компрессора, обозначение под знаком
+    placeRow(regulatorRow, { symbol: 'level_regulator', x, y: COMP.centerY });
+  });
+
+  // ---------- Подъём нагнетания (KVR после маслоотделителя) ---------------
   RISER_SLOTS.forEach(slot => {
     placeOption(slot.code, {
       symbol: slot.symbol, x: RISER_X, y: slot.y, rot: slot.rot,
@@ -650,8 +856,12 @@ function buildSchematic(result) {
     });
   });
 
-  // ---------- Предохранительный клапан и навесное ресивера ----------
-  placeOption(SAFETY.code, { symbol: 'safety_valve', x: SAFETY.x, y: 404 });
+  // ---------- Предохранительный клапан на штуцере ресивера ---------------
+  placeOption('safety_valve', {
+    symbol: 'safety_valve', x: LIQUID.safetyX, y: LIQUID.safetyY
+  });
+
+  // ---------- Навесное оборудование жидкостного ресивера ----------------
   RECEIVER_ATTACH.forEach(slot => {
     placeOption(slot.code, {
       symbol: slot.symbol, x: slot.x, y: slot.y, rot: slot.rot,
@@ -667,27 +877,25 @@ function buildSchematic(result) {
     });
   });
   SUCTION_INSTRUMENTS.forEach(slot => {
-    placeOption(slot.code, { symbol: 'instrument', x: slot.x, y: slot.y, rot: slot.rot });
+    placeOption(slot.code, {
+      symbol: 'instrument', x: slot.x, y: slot.y, rot: slot.rot,
+      tagDx: 55, tagDy: 0
+    });
   });
   HEADER_INSTRUMENTS.forEach(slot => {
     placeOption(slot.code, { symbol: 'instrument', x: slot.x, y: slot.y, rot: slot.rot });
   });
 
-  // ---------- Дифференциальный клапан (зимний комплект) ----------
-  placeOption(BYPASS.code, { symbol: 'diff_valve', x: BYPASS.x, y: 374, rot: -90, tagDx: 40, tagDy: 4, tagAnchor: 'start' });
+  // ---------- Байпас зимнего комплекта (NRD) ----------
+  placeOption(BYPASS.code, {
+    symbol: 'diff_valve', x: BYPASS.x, y: (BYPASS.y + LIQUID_Y) / 2, rot: -90,
+    tagDx: 22, tagDy: 4, tagAnchor: 'start'
+  });
 
-  // ---------- Внешние элементы контура ----------
+  // ---------- Внешние элементы контура: конденсатор ----------
   placeExternal({
     symbol: 'condenser', x: CONDENSER.cx, y: CONDENSER.cy, tag: 'K1',
     note: 'конденсатор (внешний)'
-  });
-  placeExternal({
-    symbol: 'evaporator', x: EVAPORATOR.cx, y: EVAPORATOR.cy, tag: 'EV1',
-    note: 'испаритель (внешний)'
-  });
-  placeExternal({
-    symbol: 'txv', x: TXV.x, y: LIQUID_Y, rot: 180, tag: 'EX1', tagDy: 34,
-    note: 'терморегулирующий вентиль (внешний)'
   });
 
   // ---------- Позиции вне холодильного контура ----------

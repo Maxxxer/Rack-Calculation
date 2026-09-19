@@ -37,6 +37,7 @@
 'use strict';
 
 const { db } = require('../db/database');
+const { OPTION_ARTICLES } = require('../db/optionDefinitions');
 const vibration = require('./vibration');
 
 /** Проверка правила автовключения */
@@ -312,7 +313,11 @@ function resolveOptions(ctx, selectedCodes = []) {
     if (opt.qty_per_compressor) qty = Math.max(1, ctx.totalCompressors || 1);
 
     const price = component ? component.price_eur : (opt.price_eur || 0);
-    const code = component ? component.code : (opt.code.toUpperCase());
+    // Марка позиции: у компонента каталога — его код, у позиции без компонента —
+    // заводское обозначение из гидравлической схемы агрегата, если оно задано.
+    const code = component
+      ? component.code
+      : (OPTION_ARTICLES[opt.code] || opt.code.toUpperCase());
     const name = component ? `${opt.name} ${component.code}` : opt.name;
 
     items.push({

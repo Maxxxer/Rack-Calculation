@@ -30,7 +30,7 @@
 
       <g class="schematic__units">
         <% s.blocks.forEach(b => { %>
-          <g class="schematic__unit" transform="translate(<%= b.x %> <%= b.y %>) rotate(<%= b.rot %>)">
+          <g class="schematic__unit" transform="translate(<%= b.x %> <%= b.y %>) rotate(<%= b.rot %>)<% if (b.scale && b.scale !== 1) { %> scale(<%= b.scale %>)<% } %>">
             <% if (!b.maskless) { %>
               <rect class="schematic__mask" x="<%= b.mask.x %>" y="<%= b.mask.y %>"
                     width="<%= b.mask.w %>" height="<%= b.mask.h %>" />
